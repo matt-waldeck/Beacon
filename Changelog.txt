@@ -1,4 +1,24 @@
-v1.0.0 (2026-10-07)
+v0.2.1 (2026-10-15)
+-Updated default theme to "Honeycrisp".
+-Added basic authentication.
+    -On by default.
+    -Set TRUST_PROXY=1 so the lockout uses the real client address rather than the proxy's.
+    -if proxy handling login, set ui_auth=off and make sure it isn't reachable directly.
+
+
+v0.2.0 (2026-10-14)
+-Redesigned network tab to better suit tiling system and large device counts.
+-Added more options for tiles.
+-Added ability to pull app data automatically from apps.heimdall.site.
+-Servers tab now monitors basic details, more to come later.
+-Themes.
+
+v0.1.0 (2026-10-14)
+-Preparing to expand into full homelab-focussed monitoring solution.
+-Added Server and Apps tabs, as well as a homepage.
+-Added tiling system for "widgets".
+
+v0.0.1 (2026-10-07)
 -Add and manage devices directly from WebUI.
 -SSH credentials configurable with environment variables.
 -Optional webUI credentials configurable with environment variables.
@@ -6,3 +26,6 @@ v1.0.0 (2026-10-07)
 -PoE draw for devices where supported.
 -Support for dark mode.
 -Global totals for PoE, client count, and throughput.
+-Consolidated settings menu.
+-Added option to split wireless clients by band (2.4/5/6GHz).
+-Condensed settings menu.
