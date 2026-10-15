@@ -4,6 +4,7 @@ import paramiko
 from flask import Flask, Response, jsonify, request, send_file
 
 DATA = os.environ.get("DATA_DIR", "/data")
+VERSION = "0.1.0"
 CFG, SET, DB, DEV = (os.path.join(DATA, n) for n in ("config.json", "settings.json", "stats.db", "devices.json"))
 # Read-only /proc reads work on every UniFi device; mca-dump adds model/firmware/client count where present.
 CMD = "for f in uptime loadavg meminfo stat net/dev; do echo @@$f; cat /proc/$f; done; echo @@mca; mca-dump 2>/dev/null"
@@ -97,6 +98,13 @@ def parse(out, d):
         r.update(model=m.get("model"), version=m.get("version"))
         if "vap_table" in m:  # APs only
             r["clients"] = sum(v.get("num_sta", 0) for v in m["vap_table"])
+            bands = {}
+            for v in m["vap_table"]:  # radio codes: ng = 2.4 GHz, na = 5 GHz, 6e = 6 GHz
+                b = {"ng": "2.4", "na": "5", "6e": "6"}.get(v.get("radio"))
+                if b:
+                    bands[b] = bands.get(b, 0) + v.get("num_sta", 0)
+            if bands:
+                r["bands"] = bands
         ports = [p for p in m.get("port_table", []) if "poe_power" in p]
         if ports:  # only PoE-capable devices report this; otherwise the field is left out
             r["poe"] = round(sum(float(p["poe_power"] or 0) for p in ports), 1)
@@ -145,7 +153,7 @@ def data():
         series = [json.loads(r[0]) for r in rows]
         step = max(1, len(series) // 300)  # downsample long ranges, always keeping the newest sample
         out.append({"name": d["name"], "host": d["host"], "series": series[::-1][::step][::-1]})
-    return jsonify(interval=interval(), devices=out)
+    return jsonify(interval=interval(), version=VERSION, devices=out)
 
 
 @app.post("/api/settings")
@@ -224,15 +232,22 @@ def delete_device(name):
     return jsonify(ok=True)
 
 
-@app.post("/api/order")
-def reorder():
-    order = (request.get_json(silent=True) or {}).get("order")
-    if not isinstance(order, list):
-        return bad("Expected a list of device names.")
-    pos = {str(n): i for i, n in enumerate(order)}
-    lst = devices()
-    lst.sort(key=lambda d: pos.get(d["name"], len(pos)))  # stable; devices not listed stay at the end
-    save_devices(lst)
+@app.get("/api/dash")
+def get_dash():  # tab layouts and the app catalog
+    try:
+        with open(os.path.join(DATA, "dash.json")) as f:
+            return jsonify(json.load(f))
+    except FileNotFoundError:
+        return jsonify({})
+
+
+@app.put("/api/dash")
+def put_dash():
+    d = request.get_json(silent=True)
+    if not isinstance(d, dict):
+        return bad("Expected an object.")
+    with open(os.path.join(DATA, "dash.json"), "w") as f:
+        json.dump(d, f)
     return jsonify(ok=True)
 
 
