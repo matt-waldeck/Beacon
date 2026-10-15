@@ -1,14 +1,14 @@
-import hmac, json, os, re, sqlite3, threading, time
+import hmac, json, os, re, sqlite3, subprocess, threading, time
 from concurrent.futures import ThreadPoolExecutor
 import paramiko
 from flask import Flask, Response, jsonify, request, send_file
 
 DATA = os.environ.get("DATA_DIR", "/data")
-VERSION = "0.1.0"
-CFG, SET, DB, DEV = (os.path.join(DATA, n) for n in ("config.json", "settings.json", "stats.db", "devices.json"))
+VERSION = "0.2.0"
+CFG, SET, DB, DEV, SRV = (os.path.join(DATA, n) for n in ("config.json", "settings.json", "stats.db", "devices.json", "servers.json"))
 # Read-only /proc reads work on every UniFi device; mca-dump adds model/firmware/client count where present.
 CMD = "for f in uptime loadavg meminfo stat net/dev; do echo @@$f; cat /proc/$f; done; echo @@mca; mca-dump 2>/dev/null"
-app, wake, dblock, prev = Flask(__name__), threading.Event(), threading.Lock(), {}
+app, wake, swake, dblock, prev = Flask(__name__), threading.Event(), threading.Event(), threading.Lock(), {}
 
 
 def cfg():
@@ -27,25 +27,37 @@ def env_ssh():
     return e
 
 
-def devices():
+PATHS = {"devices": DEV, "servers": SRV}
+
+
+def items(kind):
     try:
-        with open(DEV) as f:
+        with open(PATHS[kind]) as f:
             return json.load(f)
     except FileNotFoundError:
-        return cfg().get("devices", [])  # first run: seed from config.json, UI edits move it to devices.json
+        return cfg().get("devices", []) if kind == "devices" else []  # first run: devices seed from config.json
 
 
-def save_devices(lst):
-    with open(DEV, "w") as f:
+def save_items(kind, lst):
+    with open(PATHS[kind], "w") as f:
         json.dump(lst, f, indent=2)
 
 
-def interval():
+def devices():
+    return items("devices")
+
+
+def conf():
     try:
         with open(SET) as f:
-            return json.load(f)["interval"]
+            s = json.load(f)
     except Exception:
-        return cfg().get("interval", 30)
+        s = {}
+    return {"interval": s.get("interval", cfg().get("interval", 30)), "server_interval": s.get("server_interval", 15)}
+
+
+def interval():
+    return conf()["interval"]
 
 
 def sql(q, a=()):
@@ -153,16 +165,20 @@ def data():
         series = [json.loads(r[0]) for r in rows]
         step = max(1, len(series) // 300)  # downsample long ranges, always keeping the newest sample
         out.append({"name": d["name"], "host": d["host"], "series": series[::-1][::step][::-1]})
-    return jsonify(interval=interval(), version=VERSION, devices=out)
+    return jsonify(interval=interval(), server_interval=conf()["server_interval"], version=VERSION, devices=out)
 
 
 @app.post("/api/settings")
-def settings():
-    n = max(5, min(3600, int(request.json["interval"])))
+def set_settings():
+    j, s = request.get_json(silent=True) or {}, conf()
+    for k in ("interval", "server_interval"):
+        if k in j:
+            s[k] = max(5, min(3600, int(j[k])))
     with open(SET, "w") as f:
-        json.dump({"interval": n}, f)
+        json.dump(s, f)
     wake.set()
-    return jsonify(interval=n)
+    swake.set()
+    return jsonify(s)
 
 
 HOST = re.compile(r"^[A-Za-z0-9][A-Za-z0-9.:-]{0,251}$")
@@ -189,45 +205,54 @@ def bad(m, code=400):
     return jsonify(error=m), code
 
 
-@app.post("/api/devices")
-def add_device():
+TABLES = {"devices": ("samples", wake), "servers": ("pings", swake)}  # history table and wake-up event per list
+
+
+@app.post("/api/<kind>")
+def add_item(kind):
+    if kind not in TABLES:
+        return bad("Unknown list.", 404)
     try:
         name, host = fields()
     except ValueError as e:
         return bad(str(e))
-    lst = devices()
+    lst = items(kind)
     if any(d["name"] == name for d in lst):
-        return bad("A device with that name already exists.")
-    save_devices(lst + [{"name": name, "host": host}])
-    wake.set()  # poll right away
+        return bad("That name is already in use.")
+    save_items(kind, lst + [{"name": name, "host": host}])
+    TABLES[kind][1].set()  # check right away
     return jsonify(ok=True)
 
 
-@app.put("/api/devices/<path:old>")
-def edit_device(old):
+@app.put("/api/<kind>/<path:old>")
+def edit_item(kind, old):
+    if kind not in TABLES:
+        return bad("Unknown list.", 404)
     try:
         name, host = fields()
     except ValueError as e:
         return bad(str(e))
-    lst = devices()
+    lst = items(kind)
     cur = next((d for d in lst if d["name"] == old), None)
     if not cur:
-        return bad("Device not found.", 404)
+        return bad("Not found.", 404)
     if name != old and any(d["name"] == name for d in lst):
-        return bad("A device with that name already exists.")
+        return bad("That name is already in use.")
     cur.update(name=name, host=host)
-    save_devices(lst)
+    save_items(kind, lst)
     if name != old:
-        sql("UPDATE samples SET dev=? WHERE dev=?", (name, old))  # history follows the rename
+        sql(f"UPDATE {TABLES[kind][0]} SET dev=? WHERE dev=?", (name, old))  # history follows the rename
     prev.pop(old, None)
-    wake.set()
+    TABLES[kind][1].set()
     return jsonify(ok=True)
 
 
-@app.delete("/api/devices/<path:name>")
-def delete_device(name):
-    save_devices([d for d in devices() if d["name"] != name])
-    sql("DELETE FROM samples WHERE dev=?", (name,))
+@app.delete("/api/<kind>/<path:name>")
+def delete_item(kind, name):
+    if kind not in TABLES:
+        return bad("Unknown list.", 404)
+    save_items(kind, [d for d in items(kind) if d["name"] != name])
+    sql(f"DELETE FROM {TABLES[kind][0]} WHERE dev=?", (name,))
     prev.pop(name, None)
     return jsonify(ok=True)
 
@@ -251,4 +276,42 @@ def put_dash():
     return jsonify(ok=True)
 
 
+def ping(host):
+    try:
+        out = subprocess.run(["ping", "-c", "1", "-W", "2", host], capture_output=True, text=True, timeout=5).stdout
+        m = re.search(r"time[=<]([\d.]+)", out)
+        return float(m.group(1)) if m else None  # None = no reply
+    except Exception:
+        return None
+
+
+def sloop():
+    sql("CREATE TABLE IF NOT EXISTS pings (dev TEXT, ts REAL, ms REAL)")
+    sql("CREATE INDEX IF NOT EXISTS pi ON pings (dev, ts)")
+    while True:
+        t0 = time.time()
+        try:
+            with ThreadPoolExecutor(16) as ex:
+                res = list(ex.map(lambda s: (s["name"], ping(s["host"])), items("servers")))
+            for n, ms in res:
+                sql("INSERT INTO pings VALUES (?,?,?)", (n, t0, ms))
+            sql("DELETE FROM pings WHERE ts < ?", (t0 - 86400 * cfg().get("retention_days", 7),))
+        except Exception as e:
+            print("ping error:", e, flush=True)
+        swake.wait(max(1, conf()["server_interval"] - (time.time() - t0)))
+        swake.clear()
+
+
+@app.get("/api/servers")
+def servers_data():
+    mins, out = int(request.args.get("minutes", 60)), []
+    for s in items("servers"):
+        rows = sql("SELECT ts, ms FROM pings WHERE dev=? AND ts>? ORDER BY ts", (s["name"], time.time() - mins * 60))
+        series = [{"ts": r[0], "ms": r[1]} for r in rows]
+        step = max(1, len(series) // 300)  # downsample long ranges, keeping the newest sample
+        out.append({"name": s["name"], "host": s["host"], "series": series[::-1][::step][::-1]})
+    return jsonify(interval=conf()["server_interval"], servers=out)
+
+
 threading.Thread(target=loop, daemon=True).start()
+threading.Thread(target=sloop, daemon=True).start()

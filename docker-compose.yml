@@ -2,6 +2,7 @@ services:
   unifi-stats:
     build: .
     restart: unless-stopped
+    cap_add: [NET_RAW]  # lets the container send pings
     ports: ["8080:8080"]
     volumes: ["./data:/data"]
     environment:
