@@ -1,10 +1,10 @@
-# Homelab monitor — project context (v0.2.0)
+# Homelab monitor — project context (v0.2.1)
 
 Purpose: a dead-simple, Grafana-style monitoring dashboard for homelabs. Drag-and-drop grid, every tile configurable in place, built on data already collected. Reference points the author found too heavy or too light: CheckMK, Beszel, Uptime Kuma, Netdata.
 
 ## Stack and layout (flat folder)
 - `app.py` — Flask + paramiko + SQLite. Two background threads: `loop` polls devices over SSH (reads /proc, plus `mca-dump` for UniFi extras); `sloop` pings servers (`ping` binary, own interval).
-- `index.html` — whole UI: vanilla JS, Chart.js from a CDN, no build step. Two styles (Apple, Stark) x light/dark via CSS variables.
+- `index.html` — whole UI: vanilla JS, Chart.js from a CDN, no build step. Two styles x light/dark via CSS variables: Honeycrisp (Liquid Glass-inspired: wallpaper gradient, frosted tiles, specular edges, floating capsule header) and Stark (HUD).
 - `Dockerfile` (installs iputils-ping), `docker-compose.yml` (cap NET_RAW), `.env.example`, `config.example.json`, `requirements.txt`.
 - Runtime data in `/data`: `stats.db` (tables `samples`, `pings`), `devices.json`, `servers.json`, `dash.json`, `settings.json` (interval, server_interval), optional `config.json`.
 
@@ -17,13 +17,13 @@ Purpose: a dead-simple, Grafana-style monitoring dashboard for homelabs. Drag-an
 - Layout rule: tiles fall upward until they rest on another; the dragged tile is pinned. `D.v` triggers one-time layout migrations.
 
 ## Config precedence
-SSH login: `config.json` "ssh" < `SSH_*` env < per-device keys. `UI_PASSWORD` (+ `UI_USER`) turns on HTTP Basic auth.
+SSH login: `config.json` "ssh" < `SSH_*` env < per-device keys. Login is HTTP Basic and on by default: `UI_PASSWORD`/`UI_USER` set it, otherwise a password is generated on first start (hash in `/data/auth.json`, shown once in the log); `UI_AUTH=off` disables it (proxy-side auth); `TRUST_PROXY=1` reads the client IP from X-Forwarded-For for the lockout (5 failures per 5 minutes). `/healthz` needs no login. Responses carry CSP and nosniff headers.
 
 ## API
-`GET /api/data`, `GET /api/servers`, `GET|PUT /api/dash`, `POST /api/settings` (interval, server_interval), `POST /api/<devices|servers>`, `PUT|DELETE /api/<devices|servers>/<name>`.
+`GET /healthz`, `GET /api/data`, `GET /api/servers`, `GET|PUT /api/dash`, `POST /api/settings` (interval, server_interval), `POST /api/<devices|servers>`, `PUT|DELETE /api/<devices|servers>/<name>`.
 
 ## Conventions
-No auth by default, keep it on a trusted LAN. Credentials never leave the server. Keep the code small; prefer patches to rewrites.
+Bind to loopback (`BIND_ADDR=127.0.0.1`) when a proxy on the same host fronts it. Credentials never leave the server. Keep the code small; prefer patches to rewrites.
 
 ## Roadmap
 Later 0.2.x/0.3: more tile types, agent-based server metrics, richer Apps (descriptions, status checks). Bare-metal Linux install/update (floated for 0.2, not yet scheduled). Other manufacturers on the Network tab.
