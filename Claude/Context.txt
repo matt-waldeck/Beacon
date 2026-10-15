@@ -1,0 +1,1 @@
+ For the code itself, I added CONTEXT.md (architecture, data model, conventions, roadmap) and MANIFEST.sha256 (hashes of the 0.1.0 files). Keep the folder in git, and in a new chat upload CONTEXT.md plus whichever files we're changing. The manifest lets me confirm your files match the version I expect.

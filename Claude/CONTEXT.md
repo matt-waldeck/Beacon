@@ -1,31 +1,32 @@
-# Homelab monitor — project context (v0.1.0)
+# Homelab monitor — project context (v0.2.0)
 
-Purpose: a dead-simple, Grafana-style monitoring dashboard for homelabs. Drag-and-drop grid, every tile configurable in place, built on data already collected from the infrastructure. Reference points the author found too heavy or too light: CheckMK, Beszel, Uptime Kuma, Netdata.
+Purpose: a dead-simple, Grafana-style monitoring dashboard for homelabs. Drag-and-drop grid, every tile configurable in place, built on data already collected. Reference points the author found too heavy or too light: CheckMK, Beszel, Uptime Kuma, Netdata.
 
 ## Stack and layout (flat folder)
-- `app.py` — Flask + paramiko + SQLite. One background thread polls devices over SSH (reads /proc, plus `mca-dump` for UniFi extras). Serves the JSON API and `index.html`.
-- `index.html` — whole UI: vanilla JS, Chart.js from a CDN, no build step.
-- `Dockerfile`, `docker-compose.yml`, `.env.example`, `config.example.json`, `requirements.txt`.
-- Runtime data in `/data` (volume): `stats.db` (samples), `devices.json`, `dash.json` (layout + apps), `settings.json` (interval), optional `config.json`.
+- `app.py` — Flask + paramiko + SQLite. Two background threads: `loop` polls devices over SSH (reads /proc, plus `mca-dump` for UniFi extras); `sloop` pings servers (`ping` binary, own interval).
+- `index.html` — whole UI: vanilla JS, Chart.js from a CDN, no build step. Two styles (Apple, Stark) x light/dark via CSS variables.
+- `Dockerfile` (installs iputils-ping), `docker-compose.yml` (cap NET_RAW), `.env.example`, `config.example.json`, `requirements.txt`.
+- Runtime data in `/data`: `stats.db` (tables `samples`, `pings`), `devices.json`, `servers.json`, `dash.json`, `settings.json` (interval, server_interval), optional `config.json`.
 
 ## Model
-- `dash.json`: `{apps: {id: {name, url, icon}}, tabs: {home|network|servers|apps: [tile]}}`.
-- Tile: `{id, type, ref, x, y, w, h}` on a 12-column grid. Types: `summary` (ref network|servers|apps), `device` (ref = device name), `app` (ref = app id). Tiles with `new: true` are unsaved and never persisted.
-- Layout rule: tiles fall upward until they rest on another tile; the tile being dragged is pinned.
-- The Apps tab is the app catalog (removing there removes everywhere); Home can hold extra references to apps.
-- Network tab: one device tile per polled device, auto-created.
+- `dash.json`: `{v, apps: {id: {name, url, icon}}, tabs: {home|network|servers|apps: [tile]}}`. Tile: `{id, type, ref, x, y, w, h}` on a 12-column grid; tiles with `new: true` are unsaved.
+- Tile types: `stat` and `chart` (ref = key in the `CAT` table in index.html, e.g. `n.clients`, `n.c.net`, `s.c.ping`), `summary` (network|servers|apps), `list` (devices|servers), `app` (ref = app id).
+- Adding a tracked value as a tile: add a `CAT` entry plus a `STAT` or `CHART` function.
+- Network and Servers tabs = four top tiles + a list tile. Rows expand in place for facts and charts; add/edit/remove happen inline in the list.
+- Apps tab is the catalog (removing there removes everywhere); Home can reference apps. Icons: blank icon = looked up by name from Dashboard Icons (jsDelivr), then selfh.st, then first letter.
+- Layout rule: tiles fall upward until they rest on another; the dragged tile is pinned. `D.v` triggers one-time layout migrations.
 
 ## Config precedence
-SSH login: `config.json` "ssh" block < `SSH_USER`/`SSH_PASSWORD`/`SSH_KEY_FILE`/`SSH_PORT` env < per-device keys. `UI_PASSWORD` (+ optional `UI_USER`) turns on HTTP Basic auth.
+SSH login: `config.json` "ssh" < `SSH_*` env < per-device keys. `UI_PASSWORD` (+ `UI_USER`) turns on HTTP Basic auth.
 
 ## API
-`GET /api/data`, `GET|PUT /api/dash`, `POST /api/settings`, `POST /api/devices`, `PUT|DELETE /api/devices/<name>`.
+`GET /api/data`, `GET /api/servers`, `GET|PUT /api/dash`, `POST /api/settings` (interval, server_interval), `POST /api/<devices|servers>`, `PUT|DELETE /api/<devices|servers>/<name>`.
 
 ## Conventions
-No auth by default, so keep it on a trusted LAN. Credentials never leave the server. Show a field only if the device reports it. Keep the code small; prefer patches to rewrites.
+No auth by default, keep it on a trusted LAN. Credentials never leave the server. Keep the code small; prefer patches to rewrites.
 
 ## Roadmap
-0.1.x: finish the framework. Servers tab (agentless SSH first), richer Apps tab, more tile types. 0.2: bare-metal Linux install and update. Later: other manufacturers on the Network tab.
+Later 0.2.x/0.3: more tile types, agent-based server metrics, richer Apps (descriptions, status checks). Bare-metal Linux install/update (floated for 0.2, not yet scheduled). Other manufacturers on the Network tab.
 
 ## Continuing in a new chat
-Upload this file plus the files being changed; `MANIFEST.sha256` lists hashes of the 0.1.0 files so a copy can be verified.
+Upload this file plus the files being changed; `MANIFEST.sha256` lists hashes of the shipped files so a copy can be verified.
