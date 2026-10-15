@@ -1,10 +1,12 @@
-import hmac, json, os, re, sqlite3, subprocess, threading, time
+import hashlib, hmac, json, os, re, secrets, sqlite3, subprocess, threading, time
 from concurrent.futures import ThreadPoolExecutor
 import paramiko
 from flask import Flask, Response, jsonify, request, send_file
+from werkzeug.middleware.proxy_fix import ProxyFix
+from werkzeug.security import check_password_hash, generate_password_hash
 
 DATA = os.environ.get("DATA_DIR", "/data")
-VERSION = "0.2.0"
+VERSION = "0.2.1"
 CFG, SET, DB, DEV, SRV = (os.path.join(DATA, n) for n in ("config.json", "settings.json", "stats.db", "devices.json", "servers.json"))
 # Read-only /proc reads work on every UniFi device; mca-dump adds model/firmware/client count where present.
 CMD = "for f in uptime loadavg meminfo stat net/dev; do echo @@$f; cat /proc/$f; done; echo @@mca; mca-dump 2>/dev/null"
@@ -182,7 +184,67 @@ def set_settings():
 
 
 HOST = re.compile(r"^[A-Za-z0-9][A-Za-z0-9.:-]{0,251}$")
-AUTH = os.environ.get("UI_PASSWORD")
+USER = os.environ.get("UI_USER", "admin")
+AUTH_FILE = os.path.join(DATA, "auth.json")
+GOOD, fails = set(), {}  # credentials already verified (stored as hashes) and recent failed attempts per client
+if os.environ.get("TRUST_PROXY"):  # behind a reverse proxy: take the client IP from X-Forwarded-For
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+
+def setup_auth():
+    # UI_AUTH=off: no login. UI_PASSWORD: use it. Otherwise generate a password on first start and keep only its hash.
+    if os.environ.get("UI_AUTH", "").lower() == "off":
+        print("WARNING: login disabled (UI_AUTH=off). Protect this app another way.", flush=True)
+        return None
+    if os.environ.get("UI_PASSWORD"):
+        return generate_password_hash(os.environ["UI_PASSWORD"])
+    try:
+        with open(AUTH_FILE) as f:
+            return json.load(f)["hash"]
+    except (FileNotFoundError, KeyError, ValueError):
+        pw = secrets.token_urlsafe(12)
+        h = generate_password_hash(pw)
+        with open(AUTH_FILE, "w") as f:
+            json.dump({"hash": h}, f)
+        print(f"First start: sign in as '{USER}' with password {pw} (set UI_PASSWORD to choose your own)", flush=True)
+        return h
+
+
+PW_HASH = setup_auth()
+
+
+@app.before_request
+def guard():
+    if not PW_HASH or request.path == "/healthz":
+        return None
+    a, ip, now = request.authorization, request.remote_addr, time.time()
+    key = hashlib.sha256(f"{a.username}:{a.password or ''}".encode()).digest() if a else None
+    if key in GOOD:
+        return None
+    fails[ip] = recent = [t for t in fails.get(ip, []) if now - t < 300]
+    if len(recent) >= 5:
+        return Response("Too many failed attempts. Try again in a few minutes.", 429, {"Retry-After": "300"})
+    if a and hmac.compare_digest((a.username or "").encode(), USER.encode()) and check_password_hash(PW_HASH, a.password or ""):
+        if len(GOOD) > 50:
+            GOOD.clear()
+        GOOD.add(key)
+        return None
+    if a:
+        recent.append(now)
+    return Response("Login required", 401, {"WWW-Authenticate": 'Basic realm="Homelab"'})
+
+
+@app.after_request
+def headers(r):
+    r.headers.update({"X-Content-Type-Options": "nosniff", "Referrer-Policy": "same-origin",
+                      "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src * data:; frame-ancestors 'none'"})
+    r.headers["Cache-Control"] = "no-store" if request.path.startswith("/api/") else "no-cache"
+    return r
+
+
+@app.get("/healthz")
+def healthz():
+    return "ok"
 
 
 @app.before_request
