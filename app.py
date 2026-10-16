@@ -6,7 +6,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 
 DATA = os.environ.get("DATA_DIR", "/data")
-VERSION = "0.2.1"
+VERSION = "0.2.2"
 CFG, SET, DB, DEV, SRV = (os.path.join(DATA, n) for n in ("config.json", "settings.json", "stats.db", "devices.json", "servers.json"))
 # Read-only /proc reads work on every UniFi device; mca-dump adds model/firmware/client count where present.
 CMD = "for f in uptime loadavg meminfo stat net/dev; do echo @@$f; cat /proc/$f; done; echo @@mca; mca-dump 2>/dev/null"
@@ -245,14 +245,6 @@ def headers(r):
 @app.get("/healthz")
 def healthz():
     return "ok"
-
-
-@app.before_request
-def guard():  # optional login: set UI_PASSWORD (and UI_USER, default "admin") to switch it on
-    a = request.authorization
-    want = f"{os.environ.get('UI_USER', 'admin')}:{AUTH}".encode()
-    if AUTH and not (a and hmac.compare_digest(f"{a.username}:{a.password or ''}".encode(), want)):
-        return Response("Login required", 401, {"WWW-Authenticate": 'Basic realm="UniFi stats"'})
 
 
 def fields():
