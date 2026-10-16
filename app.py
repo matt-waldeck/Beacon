@@ -7,7 +7,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 
 DATA = os.environ.get("DATA_DIR", "/data")
-VERSION = "0.3.0"
+VERSION = "0.3.1"
 CFG, SET, DB, DEV, SRV = (os.path.join(DATA, n) for n in ("config.json", "settings.json", "stats.db", "devices.json", "servers.json"))
 # Read-only /proc reads work on every UniFi device; mca-dump adds model/firmware/client count where present.
 CMD = "for f in uptime loadavg meminfo stat net/dev; do echo @@$f; cat /proc/$f; done; echo @@mca; mca-dump 2>/dev/null"
@@ -311,6 +311,12 @@ def fields():
     return name, host
 
 
+def extra(kind):  # a server entry can be a physical server or a virtual machine
+    if kind != "servers":
+        return {}
+    return {"type": "vm" if (request.get_json(silent=True) or {}).get("type") == "vm" else "server"}
+
+
 def bad(m, code=400):
     return jsonify(error=m), code
 
@@ -329,7 +335,7 @@ def add_item(kind):
     lst = items(kind)
     if any(d["name"] == name for d in lst):
         return bad("That name is already in use.")
-    save_items(kind, lst + [{"name": name, "host": host}])
+    save_items(kind, lst + [{"name": name, "host": host, **extra(kind)}])
     TABLES[kind][1].set()  # check right away
     return jsonify(ok=True)
 
@@ -348,7 +354,7 @@ def edit_item(kind, old):
         return bad("Not found.", 404)
     if name != old and any(d["name"] == name for d in lst):
         return bad("That name is already in use.")
-    cur.update(name=name, host=host)
+    cur.update(name=name, host=host, **extra(kind))
     save_items(kind, lst)
     if name != old:
         sql(f"UPDATE {TABLES[kind][0]} SET dev=? WHERE dev=?", (name, old))  # history follows the rename
@@ -419,7 +425,7 @@ def servers_data():
         rows = sql("SELECT ts, ms FROM pings WHERE dev=? AND ts>? ORDER BY ts", (s["name"], time.time() - mins * 60))
         series = [{"ts": r[0], "ms": r[1]} for r in rows]
         step = max(1, len(series) // 300)  # downsample long ranges, keeping the newest sample
-        out.append({"name": s["name"], "host": s["host"], "series": series[::-1][::step][::-1]})
+        out.append({"name": s["name"], "host": s["host"], "type": s.get("type", "server"), "series": series[::-1][::step][::-1]})
     return jsonify(interval=conf()["server_interval"], servers=out)
 
 

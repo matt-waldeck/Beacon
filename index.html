@@ -39,7 +39,7 @@ button{cursor:pointer}
 .th{display:flex;justify-content:space-between;align-items:center;gap:.5rem;min-height:2.4rem;padding:.3rem .75rem;border-bottom:1px solid var(--rule)}
 .title{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
 .tb{display:none;gap:.25rem}
-.editing .tb{display:flex}.editing .th{cursor:grab;touch-action:none}
+.editing .tb{display:flex}.editing #grid .th{cursor:grab;touch-action:none}
 .tb button,.th .add{padding:.05rem .5rem}
 .body{flex:1;min-height:0;overflow:auto;padding:.75rem}
 .t-app .th,.t-stat .th{display:none}.editing .t-app .th,.editing .t-stat .th{display:flex}
@@ -109,7 +109,6 @@ dialog::backdrop{background:rgba(0,0,0,.28);backdrop-filter:blur(4px)}
 .ur{display:grid;grid-template-columns:1fr auto 1fr auto auto;gap:.5rem;align-items:center;padding:.4rem 0;border-bottom:1px solid var(--rule)}
 .row2{display:flex;flex-wrap:wrap;gap:.5rem}
 @media(max-width:640px){dialog[open]{grid-template-columns:1fr;grid-template-rows:auto 1fr}#sn{flex-direction:row;overflow:auto;border-right:0;border-bottom:1px solid var(--rule);padding:.6rem}.ur{grid-template-columns:1fr 1fr}}
-body:not(.r-admin) .th .add,body:not(.r-admin) .ld .acts{display:none}
 [data-style=pastel] .tile{background:linear-gradient(150deg,var(--tint,transparent),transparent 70%),var(--glass)}
 [data-style=pastel] .tile:nth-child(5n+1){--tint:rgba(255,160,205,.42)}[data-style=pastel] .tile:nth-child(5n+2){--tint:rgba(185,165,255,.42)}
 [data-style=pastel] .tile:nth-child(5n+3){--tint:rgba(150,228,200,.45)}[data-style=pastel] .tile:nth-child(5n+4){--tint:rgba(255,205,150,.45)}
@@ -120,6 +119,15 @@ body:not(.r-admin) .th .add,body:not(.r-admin) .ld .acts{display:none}
 [data-style=pastel] nav button[aria-current=page]{background:linear-gradient(135deg,#ffd1e8,#d9ccff);color:#4a2f8f}
 [data-style=pastel] h1::after{content:"✦";color:#ffb347;font-size:.9rem}
 [data-style=pastel] .dot{width:.75rem;height:.75rem}
+body.listy main{height:100vh;height:100dvh;overflow:auto;display:flex;flex-direction:column;padding-bottom:1rem}
+body.listy #grid{flex:none}
+#lp{display:none}body.listy #lp{display:flex;flex:1 0 18rem;min-height:0;margin-top:12px}
+#lp>.tile{flex:1;min-width:0}
+.tile.list .items{flex:1;min-height:0;overflow:auto}
+body:not(.r-admin) .adm{display:none}body:not(.r-admin):not(.r-user) .edt{display:none}
+.apps .lh,.apps .lr{grid-template-columns:minmax(0,2fr) minmax(0,3fr) auto}
+.ar{cursor:pointer}a.nm{color:inherit;text-decoration:none}
+.ic.sm{font-size:1.3rem;line-height:1}.ic.sm img{width:1.6rem;height:1.6rem}
 [data-style=stark] body{background:radial-gradient(900px 500px at 15% -5%,rgba(25,211,255,.13),transparent),repeating-linear-gradient(0deg,rgba(25,211,255,.04) 0 1px,transparent 1px 36px),repeating-linear-gradient(90deg,rgba(25,211,255,.04) 0 1px,transparent 1px 36px),var(--paper);background-attachment:fixed}
 [data-style=stark] h1{text-transform:uppercase;letter-spacing:.3em;font-size:1rem;color:var(--blue);text-shadow:0 0 10px var(--blue)}
 [data-style=stark] .logo{filter:drop-shadow(0 0 6px var(--blue))}
@@ -177,12 +185,14 @@ body:not(.r-admin) .th .add,body:not(.r-admin) .ld .acts{display:none}
 <button class="pri">Sign in</button><button type="button" id="lg" class="gb" hidden>Continue as guest</button></form></div>
 <p id="none" class="mute" hidden></p>
 <div id="grid"></div>
+<div id="lp"></div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script>
 const $ = s => document.querySelector(s);
 const COLS = 12, TABS = ["home", "network", "servers", "apps"], BANDS = ["2.4", "5", "6"];
 const NAMES = {network: "Network", servers: "Servers", apps: "Apps"};
+const LISTS = {network: "devices", servers: "servers", apps: "apps"};  // the scrollable list under each tab
 const FIELDS = {app: [["name", "Name"], ["url", "URL (https://…)"], ["icon", "Icon: blank = look up by name, or an emoji / image URL"]]};
 const SZ = {stat: [3, 2], chart: [4, 3], summary: [4, 3], list: [12, 8], app: [2, 2]};
 const CAT = {  // key: [menu group, label, tile type]
@@ -199,11 +209,11 @@ const uid = () => Math.random().toString(36).slice(2, 8);
 const T = (type, ref, x, y, w, h) => ({id: uid(), type, ref, x, y, w, h});
 const DEF = {
   home: () => [T("summary", "network", 0, 0, 6, 3), T("summary", "servers", 6, 0, 3, 3), T("summary", "apps", 9, 0, 3, 3)],
-  network: () => [T("stat", "n.online", 0, 0, 3, 3), T("stat", "n.clients", 3, 0, 3, 3), T("chart", "n.c.net", 6, 0, 3, 3), T("stat", "n.poe", 9, 0, 3, 3), T("list", "devices", 0, 3, 12, 8)],
-  servers: () => [T("stat", "s.online", 0, 0, 3, 3), T("stat", "s.avg", 3, 0, 3, 3), T("stat", "s.max", 6, 0, 3, 3), T("chart", "s.c.ping", 9, 0, 3, 3), T("list", "servers", 0, 3, 12, 8)],
+  network: () => [T("stat", "n.online", 0, 0, 3, 3), T("stat", "n.clients", 3, 0, 3, 3), T("chart", "n.c.net", 6, 0, 3, 3), T("stat", "n.poe", 9, 0, 3, 3)],
+  servers: () => [T("stat", "s.online", 0, 0, 3, 3), T("stat", "s.avg", 3, 0, 3, 3), T("stat", "s.max", 6, 0, 3, 3), T("chart", "s.c.ping", 9, 0, 3, 3)],
 };
 let D = {}, DATA = {devices: []}, SERV = {servers: []}, tab = "home", edit = false, iv = 30, siv = 15, timer, stimer, st, bandsOn = false;
-const els = {};
+const els = {}, lists = {};
 const tiles = () => D.tabs[tab] ||= [];
 const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
@@ -332,7 +342,7 @@ function devFacts(d) {
 }
 function srvFacts(s) {
   const ok = s.series.filter(x => x.ms != null), l = s.series.at(-1), n = s.series.length;
-  return `<dl><dt>Status</dt><dd>${!l ? "–" : l.ms != null ? "Online" : "Offline"}</dd><dt>Ping</dt><dd>${l?.ms != null ? MS(l.ms) : "–"}</dd>
+  return `<dl><dt>Type</dt><dd>${s.type === "vm" ? "Virtual machine" : "Server"}</dd><dt>Status</dt><dd>${!l ? "–" : l.ms != null ? "Online" : "Offline"}</dd><dt>Ping</dt><dd>${l?.ms != null ? MS(l.ms) : "–"}</dd>
     <dt>Average</dt><dd>${ok.length ? MS(avg(ok.map(x => x.ms))) : "–"}</dd><dt>Worst</dt><dd>${ok.length ? MS(mx(ok.map(x => x.ms))) : "–"}</dd>
     <dt>Loss</dt><dd>${n ? Math.round(100 * (1 - ok.length / n)) + "%" : "–"}</dd></dl>`;
 }
@@ -352,7 +362,7 @@ const LIST = {
     }},
   servers: {title: "Servers", add: "+ Add server", head: ["Name", "IP", "Status", "Ping"], items: () => SERV.servers,
     cells: s => { const l = s.series.at(-1);
-      return {sub: "", ok: l ? l.ms != null : null, c: [s.host, l ? (l.ms != null ? "Online" : "Offline") : "–", l && l.ms != null ? MS(l.ms) : "–"]}; },
+      return {sub: s.type === "vm" ? "Virtual machine" : "Server", ok: l ? l.ms != null : null, c: [s.host, l ? (l.ms != null ? "Online" : "Offline") : "–", l && l.ms != null ? MS(l.ms) : "–"]}; },
     html: `<div class="dev two"><div class="f"></div><div class="ch"><canvas></canvas></div></div>`,
     mkc: cs => [mk(cs[0], [["Ping", g("--blue")]], undefined, MS)],
     fill: (r, s) => {
@@ -363,7 +373,7 @@ const LIST = {
 };
 
 function itemForm(kind, item, mount) {
-  mount.innerHTML = `<form class="fm2"><input name="name" placeholder="Name" required maxlength="60" value="${esc(item?.name ?? "")}"><input name="host" placeholder="IP or hostname" required value="${esc(item?.host ?? "")}"><button class="pri">${item ? "Save" : "Add"}</button><button type="button" class="x">Cancel</button><span class="err"></span></form>`;
+  mount.innerHTML = `<form class="fm2"><input name="name" placeholder="Name" required maxlength="60" value="${esc(item?.name ?? "")}"><input name="host" placeholder="IP or hostname" required value="${esc(item?.host ?? "")}">${kind === "servers" ? `<select name="type"><option value="server">Server</option><option value="vm"${item?.type === "vm" ? " selected" : ""}>Virtual machine</option></select>` : ""}<button class="pri">${item ? "Save" : "Add"}</button><button type="button" class="x">Cancel</button><span class="err"></span></form>`;
   const f = mount.firstChild;
   f.onsubmit = async e => {
     e.preventDefault();
@@ -376,28 +386,31 @@ function itemForm(kind, item, mount) {
   f.elements[0].focus();
 }
 
-function mkRow(t, name) {
-  const K = LIST[t.ref], li = document.createElement("div"), r = {li, open: false}, q = s => li.querySelector(s);
+function mkRow(kind, key) {
+  const K = LIST[kind], li = document.createElement("div"), r = {li, open: false}, q = s => li.querySelector(s);
   li.className = "li";
-  li.innerHTML = `<button class="lr" aria-expanded="false"><span class="nm"><i class="dot"></i><b></b><small></small></span><span class="c1"></span><span class="c2"></span><span class="c3"></span><i class="chev">›</i></button><div class="ld" hidden>${K.html}<p class="acts"><button class="ed">Edit</button><button class="rmv">Remove</button></p><div class="fm"></div></div>`;
-  const item = () => K.items().find(x => x.name === name);
+  li.innerHTML = `<button class="lr" aria-expanded="false"><span class="nm"><i class="dot"></i><b></b><small></small></span><span class="c1"></span><span class="c2"></span><span class="c3"></span><i class="chev">›</i></button><div class="ld" hidden>${K.html}<p class="acts adm"><button class="ed">Edit</button><button class="rmv">Remove</button></p><div class="fm"></div></div>`;
+  const item = () => K.items().find(x => x.name === key);
   q(".lr").onclick = () => {
     r.open = !r.open; q(".lr").setAttribute("aria-expanded", r.open); q(".ld").hidden = !r.open;
     if (r.open) { r.charts ||= K.mkc([...li.querySelectorAll("canvas")]); K.fill(r, item()); }
     else { r.charts?.forEach(c => c.destroy()); r.charts = null; }
   };
-  q(".ed").onclick = () => itemForm(t.ref, item(), q(".fm"));
+  q(".ed").onclick = () => itemForm(kind, item(), q(".fm"));
   q(".rmv").onclick = async () => {
-    if (!confirm(`Remove ${name}${t.ref === "devices" ? " and its history" : ""}?`)) return;
-    try { await api("DELETE", `/api/${t.ref}/${encodeURIComponent(name)}`); refresh(); } catch (x) { alert(x.message); }
+    if (!confirm(`Remove ${key}${kind === "devices" ? " and its history" : ""}?`)) return;
+    try { await api("DELETE", `/api/${kind}/${encodeURIComponent(key)}`); refresh(); } catch (x) { alert(x.message); }
   };
   return r;
 }
-function renderList(t, el) {
-  const K = LIST[t.ref], src = K.items(), rows = el.rows ||= {}, box = el.querySelector(".items");
+function renderList(kind) {
+  const el = lists[kind];
+  if (!el) return;
+  if (kind === "apps") return renderApps(el);
+  const K = LIST[kind], src = K.items(), rows = el.rows ||= {}, box = el.querySelector(".items");
   for (const n in rows) if (!src.some(x => x.name === n)) { rows[n].charts?.forEach(c => c.destroy()); rows[n].li.remove(); delete rows[n]; }
   src.forEach(x => {
-    const r = rows[x.name] ||= mkRow(t, x.name), c = K.cells(x), q = s => r.li.querySelector(s);
+    const r = rows[x.name] ||= mkRow(kind, x.name), c = K.cells(x), q = s => r.li.querySelector(s);
     if (r.li.parentNode !== box) box.append(r.li);
     q(".dot").className = "dot " + (c.ok === null ? "" : c.ok ? "up" : "down");
     q(".nm b").textContent = x.name; q(".nm small").textContent = c.sub;
@@ -405,6 +418,69 @@ function renderList(t, el) {
     if (r.open) K.fill(r, x);
   });
   el.querySelector(".none2").hidden = src.length > 0;
+}
+
+// Apps: a launcher list. Click a row to open the app; Edit (editors only) opens the form, pin and remove.
+LIST.apps = {title: "Apps", add: "+ Add app", head: ["Name", "URL", ""]};
+const isUrl = u => /^https?:\/\//i.test(u || "");
+function appForm(id, mount) {
+  const a = D.apps[id] || {}, ld = mount.closest(".ld");
+  mount.innerHTML = `<form class="fm2"><input name="name" placeholder="Name" required maxlength="60" value="${esc(a.name ?? "")}"><input name="url" placeholder="https://…" value="${esc(a.url ?? "")}"><input name="icon" placeholder="Icon: blank = look up by name, or emoji / image URL" value="${esc(a.icon ?? "")}"><button class="pri">${id ? "Save" : "Add"}</button><button type="button" class="x">Cancel</button></form>`;
+  const f = mount.firstChild, close = () => { mount.innerHTML = ""; if (ld) ld.hidden = true; };
+  f.onsubmit = e => {
+    e.preventDefault();
+    const v = Object.fromEntries(new FormData(f));
+    D.apps[id || uid()] = {name: v.name.trim() || "App", url: v.url.trim(), icon: v.icon.trim()};
+    close(); save(); fillAdd(); renderList("apps");
+  };
+  f.querySelector(".x").onclick = close;
+  f.elements[0].focus();
+}
+function removeApp(id) {
+  for (const k in D.tabs) D.tabs[k].filter(x => x.type === "app" && x.ref === id).forEach(x => kill(k, x));
+  delete D.apps[id]; save(); fillAdd(); renderList("apps");
+}
+function togglePin(id) {  // show this app as a tile on Home
+  const t = D.tabs.home.find(x => x.type === "app" && x.ref === id);
+  if (t) kill("home", t); else D.tabs.home.push({id: uid(), type: "app", ref: id, x: 0, y: 99, w: 2, h: 2});
+  place(D.tabs.home); save(); fillAdd(); renderList("apps");
+}
+function mkAppRow(id) {
+  const li = document.createElement("div"), q = s => li.querySelector(s);
+  li.className = "li";
+  li.innerHTML = `<div class="lr ar"><a class="nm" target="_blank" rel="noopener"><span class="ic sm"></span><b></b></a><span class="c1"></span><button class="ed2 edt">Edit</button></div><div class="ld" hidden><div class="fm"></div><p class="acts edt"><button class="pin"></button><button class="rmv">Remove</button></p></div>`;
+  q(".lr").onclick = e => { if (!e.target.closest("a,button") && isUrl(D.apps[id]?.url)) window.open(D.apps[id].url, "_blank", "noopener"); };
+  q(".ed2").onclick = () => { const ld = q(".ld"); ld.hidden = !ld.hidden; if (ld.hidden) q(".fm").innerHTML = ""; else appForm(id, q(".fm")); };
+  q(".pin").onclick = () => togglePin(id);
+  q(".rmv").onclick = () => { if (confirm(`Remove ${D.apps[id].name}?`)) removeApp(id); };
+  return li;
+}
+function renderApps(el) {  // re-renders only when the apps change, so an open form isn't disturbed by refreshes
+  const ids = Object.keys(D.apps).sort((a, b) => D.apps[a].name.localeCompare(D.apps[b].name));
+  const sig = JSON.stringify([ids, D.apps, (D.tabs.home || []).map(t => t.ref)]);
+  if (el.sig === sig) return;
+  el.sig = sig;
+  const box = el.querySelector(".items"), rows = el.rows ||= {};
+  for (const id in rows) if (!D.apps[id]) { rows[id].remove(); delete rows[id]; }
+  ids.forEach(id => {
+    const a = D.apps[id], li = rows[id] ||= mkAppRow(id), q = s => li.querySelector(s), k = JSON.stringify(a);
+    if (li.dataset.k !== k) {
+      li.dataset.k = k;
+      const ic = icon(a); ic.classList.add("sm"); q(".nm .ic").replaceWith(ic);
+      q(".nm b").textContent = a.name; q(".c1").textContent = (a.url || "").replace(/^https?:\/\//i, "");
+      if (isUrl(a.url)) q(".nm").href = a.url; else q(".nm").removeAttribute("href");
+    }
+    q(".pin").textContent = (D.tabs.home || []).some(t => t.type === "app" && t.ref === id) ? "Remove from Home" : "Add to Home";
+    box.append(li);
+  });
+  el.querySelector(".none2").hidden = ids.length > 0;
+}
+function buildList(kind) {  // the scrollable panel under the tiles; not part of the grid
+  const K = LIST[kind], el = document.createElement("section"), ed = kind === "apps";
+  el.className = "tile list" + (ed ? " apps" : "");
+  el.innerHTML = `<div class="th"><span class="title">${K.title}</span><button class="add ${ed ? "edt" : "adm"}">${K.add}</button></div><div class="addfm"></div><div class="lh">${K.head.map(x => `<span>${x}</span>`).join("")}${ed ? "" : "<span></span>"}</div><div class="items"></div><p class="mute none2" style="padding:.9rem" hidden>Nothing here yet. Use ${K.add} to add one.</p>`;
+  el.querySelector(".add").onclick = () => ed ? appForm(null, el.querySelector(".addfm")) : itemForm(kind, null, el.querySelector(".addfm"));
+  return el;
 }
 
 function build(t) {
@@ -418,13 +494,6 @@ function build(t) {
     el.charts = [mk(el.body.querySelector("canvas"), sp.sets.map(([l, c]) => [l, g(c)]), sp.max, sp.fmt)];
   }
   if (t.type === "app") el.body.innerHTML = `<a class="app" target="_blank" rel="noopener"><span class="ic"></span><b></b></a>`;
-  if (t.type === "list") {
-    const K = LIST[t.ref], add = document.createElement("button");
-    el.body.innerHTML = `<div class="addfm"></div><div class="lh"><span>${K.head[0]}</span><span>${K.head[1]}</span><span>${K.head[2]}</span><span>${K.head[3]}</span><span></span></div><div class="items"></div><p class="mute none2" style="padding:.9rem" hidden>Nothing here yet. Use ${K.add} to add one.</p>`;
-    add.className = "add"; add.textContent = K.add;
-    add.onclick = () => itemForm(t.ref, null, el.querySelector(".addfm"));
-    el.querySelector(".th").insertBefore(add, el.querySelector(".tb"));
-  }
   el.querySelector(".th").onpointerdown = e => edit && !e.target.closest(".cf,.rm,.add") && drag(e, t, el, "move");
   el.querySelector(".rs").onpointerdown = e => drag(e, t, el, "size");
   el.querySelector(".cf").onclick = () => openCfg(t, el);
@@ -440,8 +509,7 @@ function update(t, el) {
     const sp = CHART[t.ref]();
     el.ttl.textContent = CAT[t.ref][1];
     upd(el.charts[0], sp.sets[0][2].map(p => lab(p.ts)), ...sp.sets.map(s => s[2].map(p => p.v)));
-  } else if (t.type === "list") { el.ttl.textContent = LIST[t.ref].title; renderList(t, el); }
-  else if (t.type === "app") {
+  } else if (t.type === "app") {
     const a = D.apps[t.ref] || {}, l = el.body.firstChild, k = JSON.stringify(a);
     el.ttl.textContent = l.children[1].textContent = a.name || "New app";
     if (el.ik !== k) {
@@ -467,7 +535,8 @@ function renderGrid() {
     if (el.parentNode !== gr) gr.append(el);
     update(t, el);
   });
-  $("#none").hidden = list.length > 0;
+  $("#none").hidden = list.length > 0 || !!LISTS[tab];
+  if (LISTS[tab]) renderList(LISTS[tab]);
   $("#none").textContent = "Nothing here yet. Choose Edit layout, then + Add tile.";
 }
 
@@ -499,11 +568,9 @@ function fillAdd() {
   const add = (grp, v, l) => (groups[grp] ||= []).push([v, l]);
   for (const [k, [grp, label, ty]] of Object.entries(CAT)) if (!has(ty, k)) add(grp, `${ty}:${k}`, label);
   for (const r of ["network", "servers", "apps"]) if (!has("summary", r)) add("Overviews", `summary:${r}`, `${NAMES[r]} summary`);
-  for (const r of ["devices", "servers"]) if (!has("list", r)) add("Lists", `list:${r}`, LIST[r].title + " list");
   for (const [id, a] of Object.entries(D.apps)) if (!has("app", id)) add("Apps", `app:${id}`, a.name);
-  if (tab === "apps") add("Apps", "app:new", "New app…");
   $("#add").innerHTML = `<option value="">+ Add tile</option>` + Object.entries(groups).map(([gr, o]) => `<optgroup label="${esc(gr)}">${o.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join("")}</optgroup>`).join("");
-  $("#add").hidden = !edit;
+  $("#add").hidden = !edit || tab === "apps";
 }
 $("#add").onchange = e => {
   const v = e.target.value, i = v.indexOf(":"), type = v.slice(0, i); e.target.value = "";
@@ -535,6 +602,11 @@ const refresh = () => Promise.all([load(), loadS()]);
 function setTab(k) {
   tab = TABS.includes(k) ? k : "home";
   document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-current", b.dataset.t === tab ? "page" : "false"));
+  const lk = LISTS[tab];
+  document.body.classList.toggle("listy", !!lk);
+  $("#grid").hidden = tab === "apps";
+  if (lk) { lists[lk] ||= buildList(lk); $("#lp").replaceChildren(lists[lk]); } else $("#lp").replaceChildren();
+  $("#edit").hidden = !can(2) || tab === "apps";
   renderGrid(); fillAdd();
 }
 function applyTheme(rebuild) {
@@ -545,7 +617,8 @@ function applyTheme(rebuild) {
   Chart.defaults.color = g("--mute"); Chart.defaults.borderColor = g("--grid"); Chart.defaults.font.family = g("--font");
   if (rebuild) {  // charts take their colors at creation, so rebuild the tiles
     for (const k in els) { wipe(els[k]); delete els[k]; }
-    renderGrid();
+    for (const k in lists) { wipe(lists[k]); delete lists[k]; }
+    setTab(tab);
   }
 }
 
@@ -580,7 +653,8 @@ const can = lvl => ({admin: 3, user: 2, viewer: 1, guest: 1}[ME?.role] ?? 0) >= 
 function stop() {
   clearTimeout(timer); clearTimeout(stimer);
   for (const k in els) { wipe(els[k]); delete els[k]; }
-  $("#grid").innerHTML = ""; D = {}; DATA = {devices: []}; SERV = {servers: []};
+  for (const k in lists) { wipe(lists[k]); delete lists[k]; }
+  $("#grid").innerHTML = ""; $("#lp").innerHTML = ""; D = {}; DATA = {devices: []}; SERV = {servers: []};
 }
 function splash(msg) {  // the sign-in screen
   ME = null; stop();
@@ -604,8 +678,11 @@ async function start() {
   const fresh = !D.tabs;
   D.apps ||= {}; D.tabs ||= {};
   TABS.forEach(k => D.tabs[k] ||= DEF[k] ? DEF[k]() : []);
-  if (D.v !== "0.2") { D.tabs.network = DEF.network(); D.tabs.servers = DEF.servers(); D.v = "0.2"; save(); }  // 0.1 per-device tiles become the list layout
-  else if (fresh) save();
+  if (D.v !== "0.3") {  // 0.3: the device and server lists leave the grid, and Apps becomes a plain list
+    if (!D.v) { D.tabs.network = DEF.network(); D.tabs.servers = DEF.servers(); }  // 0.1 per-device tiles are replaced
+    for (const k of ["network", "servers"]) { D.tabs[k] = D.tabs[k].filter(t => t.type !== "list"); place(D.tabs[k]); }
+    D.tabs.apps = []; D.v = "0.3"; save();
+  } else if (fresh) save();
   bandsOn = lsGet("bands") === "1"; $("#bands").checked = bandsOn;
   const sty = lsGet("style"); $("#style").value = ["pastel", "stark"].includes(sty) ? sty : "honeycrisp"; $("#theme").value = lsGet("theme") || "auto";
   applyTheme(false);

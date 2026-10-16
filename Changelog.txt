@@ -1,3 +1,7 @@
+v0.3.1 (2026-10-16)
+-Reformatted lists on Network and Servers page.
+-Added dropdown to specify servers and virtual machines.
+
 v0.3.0 (2026-10-15)
 -Applied "Beacon" branding.
 -Expanded settings menu into a full menu with more configuration options.

@@ -1,4 +1,4 @@
-# Beacon — project context (v0.3.0)
+# Beacon — project context (v0.3.1)
 
 Beacon is a dead-simple, Grafana-style monitoring dashboard for homelabs: drag-and-drop grid, every tile configurable in place, built on data already collected. Reference points the author found too heavy or too light: CheckMK, Beszel, Uptime Kuma, Netdata.
 
@@ -20,9 +20,9 @@ Beacon is a dead-simple, Grafana-style monitoring dashboard for homelabs: drag-a
 Honeycrisp (default; Liquid Glass-inspired: wallpaper gradient, frosted tiles, floating capsule header; light/dark/auto), Pastel (same glass, candy colours, light only), Stark (HUD, dark only). All CSS variables on `:root`, chosen in Settings > Appearance (per browser).
 
 ## Dashboard model
-- `dash.json`: `{v, apps: {id: {name, url, icon}}, tabs: {home|network|servers|apps: [tile]}}`. Tile: `{id, type, ref, x, y, w, h}` on a 12-column grid; `new: true` tiles are unsaved.
-- Tile types: `stat`/`chart` (ref = key in `CAT` in index.html), `summary`, `list` (devices|servers), `app`. To add a tracked value: a `CAT` entry plus a `STAT` or `CHART` function.
-- Network and Servers tabs = four top tiles + a list tile; rows expand for details and graphs; add/edit/remove inline (admin). Apps tab is the catalog; blank icon = lookup by name (Dashboard Icons, then selfh.st, then first letter).
+- `dash.json` (v "0.3"): `{v, apps: {id: {name, url, icon}}, tabs: {home|network|servers|apps: [tile]}}`. Tile: `{id, type, ref, x, y, w, h}` on a 12-column grid; `new: true` tiles are unsaved.
+- Tile types: `stat`/`chart` (ref = key in `CAT` in index.html), `summary`, `app` (Home only). To add a tracked value: a `CAT` entry plus a `STAT` or `CHART` function.
+- Lists are not tiles. Network and Servers = a tile grid on top (default: four tiles) and a scrollable list panel (`#lp`) filling the rest of the screen; rows expand for details and graphs; add/edit/remove inline (admin). Servers have a type (`server` or `vm`, stored in `servers.json`). Apps = a list only, no grid: click a row to open the app, Edit (user+) for the form, Add to/Remove from Home; the catalog is `D.apps`; blank icon = lookup by name (Dashboard Icons, then selfh.st, then first letter).
 - Layout rule: tiles fall upward until they rest on another; the dragged tile is pinned.
 
 ## API
