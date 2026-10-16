@@ -1,4 +1,4 @@
-# Homelab monitor — project context (v0.2.1)
+# Homelab monitor — project context (v0.2.2)
 
 Purpose: a dead-simple, Grafana-style monitoring dashboard for homelabs. Drag-and-drop grid, every tile configurable in place, built on data already collected. Reference points the author found too heavy or too light: CheckMK, Beszel, Uptime Kuma, Netdata.
 
