@@ -1,3 +1,14 @@
+v0.3.0 (2026-10-15)
+-Applied "Beacon" branding.
+-Expanded settings menu into a full menu with more configuration options.
+-Proper login screen with multi-user support.
+-Users are now managed from within the new settings menu.
+-Guest user available.
+-New theme - Pastel.
+
+v0.2.2 (2026-10-15)
+-Fixed logon issue from previous version.
+
 v0.2.1 (2026-10-15)
 -Updated default theme to "Honeycrisp".
 -Added basic authentication.

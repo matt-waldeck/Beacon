@@ -1,12 +1,13 @@
-import hashlib, hmac, json, os, re, secrets, sqlite3, subprocess, threading, time
+import hashlib, json, os, re, secrets, sqlite3, subprocess, threading, time
 from concurrent.futures import ThreadPoolExecutor
+from datetime import timedelta
 import paramiko
-from flask import Flask, Response, jsonify, request, send_file
+from flask import Flask, jsonify, request, send_file, session
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 
 DATA = os.environ.get("DATA_DIR", "/data")
-VERSION = "0.2.2"
+VERSION = "0.3.0"
 CFG, SET, DB, DEV, SRV = (os.path.join(DATA, n) for n in ("config.json", "settings.json", "stats.db", "devices.json", "servers.json"))
 # Read-only /proc reads work on every UniFi device; mca-dump adds model/firmware/client count where present.
 CMD = "for f in uptime loadavg meminfo stat net/dev; do echo @@$f; cat /proc/$f; done; echo @@mca; mca-dump 2>/dev/null"
@@ -55,7 +56,7 @@ def conf():
             s = json.load(f)
     except Exception:
         s = {}
-    return {"interval": s.get("interval", cfg().get("interval", 30)), "server_interval": s.get("server_interval", 15)}
+    return {"interval": s.get("interval", cfg().get("interval", 30)), "server_interval": s.get("server_interval", 15), "guest": bool(s.get("guest", False))}
 
 
 def interval():
@@ -176,6 +177,8 @@ def set_settings():
     for k in ("interval", "server_interval"):
         if k in j:
             s[k] = max(5, min(3600, int(j[k])))
+    if "guest" in j:
+        s["guest"] = bool(j["guest"])
     with open(SET, "w") as f:
         json.dump(s, f)
     wake.set()
@@ -185,53 +188,106 @@ def set_settings():
 
 HOST = re.compile(r"^[A-Za-z0-9][A-Za-z0-9.:-]{0,251}$")
 USER = os.environ.get("UI_USER", "admin")
-AUTH_FILE = os.path.join(DATA, "auth.json")
-GOOD, fails = set(), {}  # credentials already verified (stored as hashes) and recent failed attempts per client
+AUTH_FILE = os.path.join(DATA, "auth.json")  # 0.2.x generated login, carried over once
+USERS_FILE = os.path.join(DATA, "users.json")
+BRAND_FILE = os.path.join(DATA, "brand.json")
+AUTH_OFF = os.environ.get("UI_AUTH", "").lower() == "off"
+LEVEL = {"admin": 3, "user": 2, "viewer": 1, "guest": 1}  # admin: everything, user: edit layouts and apps, viewer/guest: view only
+fails = {}  # recent failed sign-ins per client
 if os.environ.get("TRUST_PROXY"):  # behind a reverse proxy: take the client IP from X-Forwarded-For
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 
-def setup_auth():
-    # UI_AUTH=off: no login. UI_PASSWORD: use it. Otherwise generate a password on first start and keep only its hash.
-    if os.environ.get("UI_AUTH", "").lower() == "off":
-        print("WARNING: login disabled (UI_AUTH=off). Protect this app another way.", flush=True)
-        return None
-    if os.environ.get("UI_PASSWORD"):
-        return generate_password_hash(os.environ["UI_PASSWORD"])
+def secret():
+    p = os.path.join(DATA, "secret.key")
     try:
-        with open(AUTH_FILE) as f:
-            return json.load(f)["hash"]
-    except (FileNotFoundError, KeyError, ValueError):
-        pw = secrets.token_urlsafe(12)
-        h = generate_password_hash(pw)
-        with open(AUTH_FILE, "w") as f:
-            json.dump({"hash": h}, f)
-        print(f"First start: sign in as '{USER}' with password {pw} (set UI_PASSWORD to choose your own)", flush=True)
-        return h
+        with open(p) as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        key = secrets.token_hex(32)
+        with open(p, "w") as f:
+            f.write(key)
+        os.chmod(p, 0o600)
+        return key
 
 
-PW_HASH = setup_auth()
+app.secret_key = secret()
+app.config.update(SESSION_COOKIE_NAME="beacon_session", SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax",
+                  SESSION_COOKIE_SECURE=bool(os.environ.get("COOKIE_SECURE")), PERMANENT_SESSION_LIFETIME=timedelta(days=30),
+                  MAX_CONTENT_LENGTH=3_000_000)
+
+
+def users():
+    try:
+        with open(USERS_FILE) as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return []
+
+
+def save_users(lst):
+    with open(USERS_FILE, "w") as f:
+        json.dump(lst, f, indent=2)
+
+
+def setup_users():
+    lst, pw = users(), os.environ.get("UI_PASSWORD")
+    before = json.dumps(lst)
+    if not lst and os.path.exists(AUTH_FILE):  # 0.2.x: carry the generated password over
+        try:
+            with open(AUTH_FILE) as f:
+                lst = [{"name": USER, "hash": json.load(f)["hash"], "role": "admin"}]
+        except (KeyError, ValueError):
+            pass
+    if pw:  # UI_PASSWORD always sets that user's password: also the way back in if it is forgotten
+        u = next((x for x in lst if x["name"] == USER), None)
+        if not u:
+            lst.append({"name": USER, "hash": generate_password_hash(pw), "role": "admin"})
+        elif not check_password_hash(u["hash"], pw):
+            u["hash"], u["role"] = generate_password_hash(pw), "admin"
+    elif not lst:
+        p = secrets.token_urlsafe(12)
+        lst = [{"name": USER, "hash": generate_password_hash(p), "role": "admin"}]
+        print(f"First start: sign in as '{USER}' with password {p} (set UI_PASSWORD to choose your own)", flush=True)
+    if json.dumps(lst) != before:
+        save_users(lst)
+
+
+DUMMY = generate_password_hash("not-a-real-password")  # keeps timing similar when the name is unknown
+if AUTH_OFF:
+    print("WARNING: sign-in disabled (UI_AUTH=off). Protect this app another way.", flush=True)
+else:
+    setup_users()
+
+
+def who():
+    if AUTH_OFF:
+        return {"name": "admin", "role": "admin"}
+    n = session.get("u")
+    if n:
+        u = next((x for x in users() if x["name"] == n), None)
+        if u and session.get("h") == u["hash"][-12:]:
+            return {"name": n, "role": u["role"]}
+        session.clear()
+    if session.get("g") and conf()["guest"]:
+        return {"name": "Guest", "role": "guest"}
+    return None
+
+
+OPEN = {("GET", "/"), ("GET", "/healthz"), ("GET", "/api/me"), ("GET", "/api/brand"), ("POST", "/api/login")}
 
 
 @app.before_request
 def guard():
-    if not PW_HASH or request.path == "/healthz":
+    m, p = ("GET" if request.method == "HEAD" else request.method), request.path
+    if (m, p) in OPEN:
         return None
-    a, ip, now = request.authorization, request.remote_addr, time.time()
-    key = hashlib.sha256(f"{a.username}:{a.password or ''}".encode()).digest() if a else None
-    if key in GOOD:
-        return None
-    fails[ip] = recent = [t for t in fails.get(ip, []) if now - t < 300]
-    if len(recent) >= 5:
-        return Response("Too many failed attempts. Try again in a few minutes.", 429, {"Retry-After": "300"})
-    if a and hmac.compare_digest((a.username or "").encode(), USER.encode()) and check_password_hash(PW_HASH, a.password or ""):
-        if len(GOOD) > 50:
-            GOOD.clear()
-        GOOD.add(key)
-        return None
-    if a:
-        recent.append(now)
-    return Response("Login required", 401, {"WWW-Authenticate": 'Basic realm="Homelab"'})
+    me = who()
+    if not me:
+        return jsonify(error="Please sign in."), 401
+    need = 1 if p in ("/api/logout", "/api/me/password") or (m == "GET" and p != "/api/users") else 2 if (m, p) == ("PUT", "/api/dash") else 3
+    if LEVEL[me["role"]] < need:
+        return jsonify(error="You don't have permission to do that."), 403
 
 
 @app.after_request
@@ -365,6 +421,145 @@ def servers_data():
         step = max(1, len(series) // 300)  # downsample long ranges, keeping the newest sample
         out.append({"name": s["name"], "host": s["host"], "series": series[::-1][::step][::-1]})
     return jsonify(interval=conf()["server_interval"], servers=out)
+
+
+@app.get("/api/me")
+def me():
+    return jsonify(user=who(), guest=conf()["guest"], auth=not AUTH_OFF, version=VERSION)
+
+
+@app.post("/api/login")
+def login():
+    j = request.get_json(silent=True) or {}
+    if j.get("guest"):
+        if not conf()["guest"]:
+            return bad("Guest access is turned off.", 403)
+        session.clear()
+        session["g"], session.permanent = 1, True
+        return jsonify(ok=True)
+    ip, now = request.remote_addr, time.time()
+    recent = fails[ip] = [t for t in fails.get(ip, []) if now - t < 300]
+    if len(recent) >= 5:
+        return bad("Too many attempts. Try again in a few minutes.", 429)
+    name = str(j.get("name", "")).strip().lower()
+    u = next((x for x in users() if x["name"].lower() == name), None)
+    ok = check_password_hash(u["hash"] if u else DUMMY, str(j.get("password", "")))
+    if not (u and ok):
+        recent.append(now)
+        return bad("Wrong name or password.", 401)
+    session.clear()
+    session["u"], session["h"], session.permanent = u["name"], u["hash"][-12:], bool(j.get("remember"))
+    return jsonify(ok=True)
+
+
+@app.post("/api/logout")
+def logout():
+    session.clear()
+    return jsonify(ok=True)
+
+
+@app.post("/api/me/password")
+def change_password():
+    j, lst = request.get_json(silent=True) or {}, users()
+    u = next((x for x in lst if x["name"] == who()["name"]), None)
+    if not u:
+        return bad("Guests can't change a password.", 403)
+    if not check_password_hash(u["hash"], str(j.get("current", ""))):
+        return bad("Current password is wrong.")
+    if len(str(j.get("new", ""))) < 8:
+        return bad("Use at least 8 characters.")
+    u["hash"] = generate_password_hash(str(j["new"]))
+    save_users(lst)
+    session["h"] = u["hash"][-12:]  # this session stays signed in, others are signed out
+    return jsonify(ok=True)
+
+
+@app.get("/api/users")
+def list_users():
+    return jsonify(users=[{"name": u["name"], "role": u["role"]} for u in users()], guest=conf()["guest"])
+
+
+@app.post("/api/users")
+def add_user():
+    j, lst = request.get_json(silent=True) or {}, users()
+    name, pw, role = str(j.get("name", "")).strip()[:40], str(j.get("password", "")), j.get("role", "viewer")
+    if not name or role not in ("admin", "user", "viewer"):
+        return bad("Enter a name and a role.")
+    if len(pw) < 8:
+        return bad("Use at least 8 characters.")
+    if any(u["name"].lower() == name.lower() for u in lst):
+        return bad("That name is already in use.")
+    save_users(lst + [{"name": name, "hash": generate_password_hash(pw), "role": role}])
+    return jsonify(ok=True)
+
+
+@app.put("/api/users/<path:name>")
+def edit_user(name):
+    j, lst = request.get_json(silent=True) or {}, users()
+    u = next((x for x in lst if x["name"] == name), None)
+    if not u:
+        return bad("Not found.", 404)
+    if "role" in j:
+        if j["role"] not in ("admin", "user", "viewer"):
+            return bad("Unknown role.")
+        if u["role"] == "admin" and j["role"] != "admin" and sum(x["role"] == "admin" for x in lst) < 2:
+            return bad("There has to be at least one admin.")
+        u["role"] = j["role"]
+    if j.get("password"):
+        if len(str(j["password"])) < 8:
+            return bad("Use at least 8 characters.")
+        u["hash"] = generate_password_hash(str(j["password"]))
+        if who()["name"] == name:
+            session["h"] = u["hash"][-12:]
+    save_users(lst)
+    return jsonify(ok=True)
+
+
+@app.delete("/api/users/<path:name>")
+def delete_user(name):
+    lst = users()
+    u = next((x for x in lst if x["name"] == name), None)
+    if not u:
+        return bad("Not found.", 404)
+    if u["role"] == "admin" and sum(x["role"] == "admin" for x in lst) < 2:
+        return bad("There has to be at least one admin.")
+    save_users([x for x in lst if x is not u])
+    return jsonify(ok=True)
+
+
+BRAND_DEF = {"name": "Beacon", "tab": "", "tagline": "", "logo": "", "favicon": ""}
+IMG = re.compile(r"^data:image/(png|jpeg|webp|gif|svg\+xml|x-icon|vnd\.microsoft\.icon);base64,[A-Za-z0-9+/=]+$")
+
+
+def brand():
+    try:
+        with open(BRAND_FILE) as f:
+            return {**BRAND_DEF, **json.load(f)}
+    except FileNotFoundError:
+        return dict(BRAND_DEF)
+
+
+@app.get("/api/brand")
+def get_brand():  # public: the sign-in screen needs it
+    return jsonify(brand())
+
+
+@app.put("/api/brand")
+def put_brand():
+    j, b = request.get_json(silent=True) or {}, brand()
+    for k, n in (("name", 40), ("tab", 80), ("tagline", 140)):
+        if k in j:
+            b[k] = str(j[k]).strip()[:n]
+    for k in ("logo", "favicon"):
+        if k in j:
+            v = j[k] or ""
+            if v and (len(v) > 700000 or not IMG.match(v)):
+                return bad("Use a PNG, JPG, WebP, GIF, SVG or ICO image under 500 KB.")
+            b[k] = v
+    b["name"] = b["name"] or "Beacon"
+    with open(BRAND_FILE, "w") as f:
+        json.dump(b, f)
+    return jsonify(b)
 
 
 threading.Thread(target=loop, daemon=True).start()

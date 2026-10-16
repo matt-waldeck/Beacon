@@ -1,15 +1,18 @@
 services:
-  unifi-stats:
+  beacon:
     build: .
+    image: beacon:0.3.0
+    container_name: beacon
     restart: unless-stopped
     cap_add: [NET_RAW]  # lets the container send pings
     ports: ["${BIND_ADDR:-0.0.0.0}:8080:8080"]  # BIND_ADDR=127.0.0.1 when a proxy on this host fronts it
     volumes: ["./data:/data"]
     environment:
       UI_USER: ${UI_USER:-admin}
-      UI_PASSWORD: ${UI_PASSWORD:-}  # blank = a password is generated on first start (see the container log)
+      UI_PASSWORD: ${UI_PASSWORD:-}  # blank = an admin password is generated on first start (see the container log); when set it always resets UI_USER's password
       UI_AUTH: ${UI_AUTH:-}  # "off" only if your proxy handles the login
       TRUST_PROXY: ${TRUST_PROXY:-}  # 1 behind a reverse proxy, so lockouts use the real client IP
+      COOKIE_SECURE: ${COOKIE_SECURE:-}  # 1 when Beacon is served over HTTPS
       SSH_USER: ${SSH_USER:-}  # shared SSH login for every device, also set in .env
       SSH_PASSWORD: ${SSH_PASSWORD:-}
       SSH_KEY_FILE: ${SSH_KEY_FILE:-}
