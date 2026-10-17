@@ -1,3 +1,8 @@
+v0.3.2 (2026-10-16)
+-Fixed issue preventing Network and Server devices from displaying properly.
+-The “Continue as guest” button now appears after sign-out, even if guest access was switched on after the page loaded.
+-Fixed a few alignment issues.
+
 v0.3.1 (2026-10-16)
 -Reformatted lists on Network and Servers page.
 -Added dropdown to specify servers and virtual machines.

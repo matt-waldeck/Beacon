@@ -121,11 +121,11 @@ dialog::backdrop{background:rgba(0,0,0,.28);backdrop-filter:blur(4px)}
 [data-style=pastel] .dot{width:.75rem;height:.75rem}
 body.listy main{height:100vh;height:100dvh;overflow:auto;display:flex;flex-direction:column;padding-bottom:1rem}
 body.listy #grid{flex:none}
-#lp{display:none}body.listy #lp{display:flex;flex:1 0 18rem;min-height:0;margin-top:12px}
-#lp>.tile{flex:1;min-width:0}
+#lpanel{display:none}body.listy #lpanel{display:flex;flex:1 0 18rem;min-height:0;margin-top:12px}
+#lpanel>.tile{flex:1;min-width:0}
 .tile.list .items{flex:1;min-height:0;overflow:auto}
 body:not(.r-admin) .adm{display:none}body:not(.r-admin):not(.r-user) .edt{display:none}
-.apps .lh,.apps .lr{grid-template-columns:minmax(0,2fr) minmax(0,3fr) auto}
+.apps .lh,.apps .lr{grid-template-columns:minmax(0,2fr) minmax(0,3fr) 4.5rem}
 .ar{cursor:pointer}a.nm{color:inherit;text-decoration:none}
 .ic.sm{font-size:1.3rem;line-height:1}.ic.sm img{width:1.6rem;height:1.6rem}
 [data-style=stark] body{background:radial-gradient(900px 500px at 15% -5%,rgba(25,211,255,.13),transparent),repeating-linear-gradient(0deg,rgba(25,211,255,.04) 0 1px,transparent 1px 36px),repeating-linear-gradient(90deg,rgba(25,211,255,.04) 0 1px,transparent 1px 36px),var(--paper);background-attachment:fixed}
@@ -185,7 +185,7 @@ body:not(.r-admin) .adm{display:none}body:not(.r-admin):not(.r-user) .edt{displa
 <button class="pri">Sign in</button><button type="button" id="lg" class="gb" hidden>Continue as guest</button></form></div>
 <p id="none" class="mute" hidden></p>
 <div id="grid"></div>
-<div id="lp"></div>
+<div id="lpanel"></div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script>
@@ -605,7 +605,7 @@ function setTab(k) {
   const lk = LISTS[tab];
   document.body.classList.toggle("listy", !!lk);
   $("#grid").hidden = tab === "apps";
-  if (lk) { lists[lk] ||= buildList(lk); $("#lp").replaceChildren(lists[lk]); } else $("#lp").replaceChildren();
+  if (lk) { lists[lk] ||= buildList(lk); $("#lpanel").replaceChildren(lists[lk]); } else $("#lpanel").replaceChildren();
   $("#edit").hidden = !can(2) || tab === "apps";
   renderGrid(); fillAdd();
 }
@@ -654,13 +654,14 @@ function stop() {
   clearTimeout(timer); clearTimeout(stimer);
   for (const k in els) { wipe(els[k]); delete els[k]; }
   for (const k in lists) { wipe(lists[k]); delete lists[k]; }
-  $("#grid").innerHTML = ""; $("#lp").innerHTML = ""; D = {}; DATA = {devices: []}; SERV = {servers: []};
+  $("#grid").innerHTML = ""; $("#lpanel").innerHTML = ""; D = {}; DATA = {devices: []}; SERV = {servers: []};
 }
 function splash(msg) {  // the sign-in screen
   ME = null; stop();
   document.body.classList.add("splashing"); document.body.classList.remove("booting");
   $("#sd").close(); $("#splash").hidden = false;
   $("#lg").hidden = !GUEST; $("#lerr").textContent = msg || ""; $("#lu").focus();
+  api("GET", "/api/me").then(m => { GUEST = !!m.guest; $("#lg").hidden = !GUEST; }).catch(() => {});  // guest access may have been switched on since this page loaded
 }
 function enter(u) {
   ME = u; $("#splash").hidden = true;

@@ -1,4 +1,4 @@
-# Beacon — project context (v0.3.1)
+# Beacon — project context (v0.3.2)
 
 Beacon is a dead-simple, Grafana-style monitoring dashboard for homelabs: drag-and-drop grid, every tile configurable in place, built on data already collected. Reference points the author found too heavy or too light: CheckMK, Beszel, Uptime Kuma, Netdata.
 
@@ -29,7 +29,7 @@ Honeycrisp (default; Liquid Glass-inspired: wallpaper gradient, frosted tiles, f
 Open: `GET /healthz`, `GET /api/me`, `GET /api/brand`, `POST /api/login`. Any signed-in role: `GET /api/data|servers|dash`, `POST /api/logout`, `POST /api/me/password`. User+: `PUT /api/dash`. Admin: `PUT /api/brand`, `POST /api/settings`, `GET|POST /api/users`, `PUT|DELETE /api/users/<name>`, `POST /api/<devices|servers>`, `PUT|DELETE /api/<devices|servers>/<name>`.
 
 ## Conventions
-Credentials never leave the server. Keep the code small; prefer patches to rewrites. Bind to loopback (`BIND_ADDR=127.0.0.1`) when a proxy on the same host fronts it.
+Credentials never leave the server. Keep the code small; prefer patches to rewrites. Element ids in `index.html` must be unique (a clash between the sign-in password field and the list panel once hid every list). Check the UI in a real browser (headless Chromium via Playwright) rather than only syntax-checking it. Bind to loopback (`BIND_ADDR=127.0.0.1`) when a proxy on the same host fronts it.
 
 ## Roadmap
 More tile types, agent-based server metrics, richer Apps (descriptions, status checks), per-user layouts. Bare-metal Linux install/update (not yet scheduled). Other manufacturers on the Network tab.
