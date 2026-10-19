@@ -1,4 +1,4 @@
-# Beacon — project context (v0.3.3)
+# Beacon — project context (v0.3.4)
 
 Beacon is a dead-simple, Grafana-style monitoring dashboard for homelabs: drag-and-drop grid, every tile configurable in place, built on data already collected. Reference points the author found too heavy or too light: CheckMK, Beszel, Uptime Kuma, Netdata.
 
@@ -18,6 +18,9 @@ Beacon is a dead-simple, Grafana-style monitoring dashboard for homelabs: drag-a
 
 ## Styles
 Honeycrisp (default; Liquid Glass-inspired: wallpaper gradient, frosted tiles, floating capsule header; light/dark/auto), Pastel (candy colours, confetti and drifting bubbles, tiles that hop on hover, emoji tabs; light only), Stark (HUD, dark only). All CSS variables on `:root`, chosen in Settings > Appearance (per browser).
+
+## Appearance settings (per browser, localStorage)
+`style` (honeycrisp | pastel | stark), `theme` (auto | light | dark; Honeycrisp only), `hover` (none | glow | bounce; unset = glow for Honeycrisp and Stark, bounce for Pastel), `fun` (Pastel only; off hides its emoji, sparkles and little animations), `bands`. They become `data-style`, `data-theme`, `data-hover`, `data-fun` on `<html>`. The selected tab is marked by one oval (`#pill`) that glides between tabs in every style, filled from the `--pill` token.
 
 ## Dashboard model
 - `dash.json` (v "0.3"): `{v, apps: {id: {name, url, icon}}, tabs: {home|network|servers|apps: [tile]}}`. Tile: `{id, type, ref, x, y, w, h}` on a 12-column grid; `new: true` tiles are unsaved.

@@ -4,14 +4,14 @@
 <meta name="color-scheme" content="light dark">
 <title>Beacon</title>
 <link rel="icon" id="fav" href="data:,">
-<script>try{var d=document.documentElement,s=localStorage.getItem("style"),t=localStorage.getItem("theme");if(s)d.dataset.style=s;if(t&&t!=="auto")d.dataset.theme=t}catch(e){}</script>
+<script>try{var d=document.documentElement,s=localStorage.getItem("style"),t=localStorage.getItem("theme");if(s)d.dataset.style=s;if(t&&t!=="auto")d.dataset.theme=t;var hv=localStorage.getItem("hover");if(hv)d.dataset.hover=hv;if(localStorage.getItem("fun")==="0")d.dataset.fun="off"}catch(e){}</script>
 <style>
-:root{color-scheme:light;--r:20px;--font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;--ink:#1d1d1f;--paper:#f5f5f7;--rule:rgba(0,0,0,.09);--grid:rgba(0,0,0,.06);--field:#fff;--blue:#0071e3;--on-blue:#fff;--amber:#ff9f0a;--red:#d70015;--ok:#248a3d;--mute:#6e6e73;--sh:inset 0 1px 0 var(--hi),inset 0 0 0 1px var(--hi2),0 1px 1px rgba(0,0,0,.05),0 14px 34px rgba(0,0,0,.10);--glass:rgba(255,255,255,.58);--glass2:rgba(255,255,255,.4);--hi:rgba(255,255,255,.85);--hi2:rgba(255,255,255,.45);--w1:#cfe6ff;--w2:#ffdcea;--w3:#d8f3e3}
-:root[data-theme="dark"]{color-scheme:dark;--ink:#f5f5f7;--paper:#000;--rule:rgba(255,255,255,.12);--grid:rgba(255,255,255,.08);--field:#1c1c1e;--blue:#0a84ff;--amber:#ff9f0a;--red:#ff453a;--ok:#30d158;--mute:#98989d;--sh:inset 0 1px 0 var(--hi),inset 0 0 0 1px var(--hi2),0 1px 1px rgba(0,0,0,.3),0 14px 34px rgba(0,0,0,.45);--glass:rgba(48,48,56,.5);--glass2:rgba(255,255,255,.05);--hi:rgba(255,255,255,.16);--hi2:rgba(255,255,255,.07);--w1:#1c3a78;--w2:#4b2263;--w3:#0d4a44}
-@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--ink:#f5f5f7;--paper:#000;--rule:rgba(255,255,255,.12);--grid:rgba(255,255,255,.08);--field:#1c1c1e;--blue:#0a84ff;--amber:#ff9f0a;--red:#ff453a;--ok:#30d158;--mute:#98989d;--sh:inset 0 1px 0 var(--hi),inset 0 0 0 1px var(--hi2),0 1px 1px rgba(0,0,0,.3),0 14px 34px rgba(0,0,0,.45);--glass:rgba(48,48,56,.5);--glass2:rgba(255,255,255,.05);--hi:rgba(255,255,255,.16);--hi2:rgba(255,255,255,.07);--w1:#1c3a78;--w2:#4b2263;--w3:#0d4a44}}
-:root[data-style="stark"]{color-scheme:dark;--r:2px;--font:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--ink:#d8f6ff;--paper:#04080d;--rule:rgba(25,211,255,.3);--grid:rgba(25,211,255,.1);--field:rgba(6,16,26,.85);--blue:#19d3ff;--on-blue:#021018;--amber:#ff9f2e;--red:#ff4d5e;--ok:#2dffa0;--mute:#6fa8bd;--sh:0 0 18px rgba(25,211,255,.12),inset 0 0 24px rgba(25,211,255,.05);--glass:var(--field);--glass2:rgba(25,211,255,.05);--hi:transparent;--hi2:transparent}
+:root{color-scheme:light;--r:20px;--font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;--ink:#1d1d1f;--paper:#f5f5f7;--rule:rgba(0,0,0,.09);--grid:rgba(0,0,0,.06);--field:#fff;--blue:#0071e3;--on-blue:#fff;--amber:#ff9f0a;--red:#d70015;--ok:#248a3d;--mute:#6e6e73;--sh:inset 0 1px 0 var(--hi),inset 0 0 0 1px var(--hi2),0 1px 1px rgba(0,0,0,.05),0 14px 34px rgba(0,0,0,.10);--glass:rgba(255,255,255,.58);--glass2:rgba(255,255,255,.4);--hi:rgba(255,255,255,.85);--hi2:rgba(255,255,255,.45);--w1:#cfe6ff;--w2:#ffdcea;--w3:#d8f3e3;--pill:#fff}
+:root[data-theme="dark"]{color-scheme:dark;--ink:#f5f5f7;--paper:#000;--rule:rgba(255,255,255,.12);--grid:rgba(255,255,255,.08);--field:#1c1c1e;--blue:#0a84ff;--amber:#ff9f0a;--red:#ff453a;--ok:#30d158;--mute:#98989d;--sh:inset 0 1px 0 var(--hi),inset 0 0 0 1px var(--hi2),0 1px 1px rgba(0,0,0,.3),0 14px 34px rgba(0,0,0,.45);--glass:rgba(48,48,56,.5);--glass2:rgba(255,255,255,.05);--hi:rgba(255,255,255,.16);--hi2:rgba(255,255,255,.07);--w1:#1c3a78;--w2:#4b2263;--w3:#0d4a44;--pill:rgba(255,255,255,.2)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--ink:#f5f5f7;--paper:#000;--rule:rgba(255,255,255,.12);--grid:rgba(255,255,255,.08);--field:#1c1c1e;--blue:#0a84ff;--amber:#ff9f0a;--red:#ff453a;--ok:#30d158;--mute:#98989d;--sh:inset 0 1px 0 var(--hi),inset 0 0 0 1px var(--hi2),0 1px 1px rgba(0,0,0,.3),0 14px 34px rgba(0,0,0,.45);--glass:rgba(48,48,56,.5);--glass2:rgba(255,255,255,.05);--hi:rgba(255,255,255,.16);--hi2:rgba(255,255,255,.07);--w1:#1c3a78;--w2:#4b2263;--w3:#0d4a44;--pill:rgba(255,255,255,.2)}}
+:root[data-style="stark"]{color-scheme:dark;--r:2px;--font:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--ink:#d8f6ff;--paper:#04080d;--rule:rgba(25,211,255,.3);--grid:rgba(25,211,255,.1);--field:rgba(6,16,26,.85);--blue:#19d3ff;--on-blue:#021018;--amber:#ff9f2e;--red:#ff4d5e;--ok:#2dffa0;--mute:#6fa8bd;--sh:0 0 18px rgba(25,211,255,.12),inset 0 0 24px rgba(25,211,255,.05);--glass:var(--field);--glass2:rgba(25,211,255,.05);--hi:transparent;--hi2:transparent;--pill:color-mix(in srgb,var(--blue) 16%,transparent)}
 /* Pastel: Honeycrisp's glass, but candy-coloured */
-:root[data-style="pastel"]{color-scheme:light;--r:30px;--font:ui-rounded,"SF Pro Rounded","Nunito","Quicksand","Varela Round",-apple-system,system-ui,sans-serif;--ink:#4a3570;--paper:#fff3fa;--rule:rgba(160,120,230,.22);--grid:rgba(160,120,230,.12);--field:#fff;--blue:#9a6bff;--on-blue:#fff;--amber:#ff7fa8;--red:#ff5c7a;--ok:#27c99a;--mute:#9a86c0;--sh:0 5px 0 var(--edge,rgba(190,160,255,.55)),0 18px 34px rgba(160,100,255,.20);--glass:rgba(255,255,255,.72);--glass2:rgba(255,255,255,.6);--hi:#fff;--hi2:rgba(255,255,255,.7);--w1:#ffb8dc;--w2:#c9b2ff;--w3:#a8f0d6;--w4:#ffdca8;--edge:rgba(190,160,255,.55)}
+:root[data-style="pastel"]{color-scheme:light;--r:30px;--font:ui-rounded,"SF Pro Rounded","Nunito","Quicksand","Varela Round",-apple-system,system-ui,sans-serif;--ink:#4a3570;--paper:#fff3fa;--rule:rgba(160,120,230,.22);--grid:rgba(160,120,230,.12);--field:#fff;--blue:#9a6bff;--on-blue:#fff;--amber:#ff7fa8;--red:#ff5c7a;--ok:#27c99a;--mute:#9a86c0;--sh:0 5px 0 var(--edge,rgba(190,160,255,.55)),0 18px 34px rgba(160,100,255,.20);--glass:rgba(255,255,255,.72);--glass2:rgba(255,255,255,.6);--hi:#fff;--hi2:rgba(255,255,255,.7);--w1:#ffb8dc;--w2:#c9b2ff;--w3:#a8f0d6;--w4:#ffdca8;--edge:rgba(190,160,255,.55);--pill:linear-gradient(135deg,#ffd1e8,#d9ccff)}
 *{box-sizing:border-box}
 body{margin:0;background:radial-gradient(60rem 40rem at 10% -10%,var(--w1),transparent 60%),radial-gradient(50rem 40rem at 95% 5%,var(--w2),transparent 55%),radial-gradient(60rem 50rem at 60% 110%,var(--w3),transparent 55%),radial-gradient(45rem 35rem at 35% 55%,var(--w4,transparent),transparent 60%),var(--paper);background-attachment:fixed;color:var(--ink);font:15px/1.5 var(--font);-webkit-font-smoothing:antialiased}
 main{max-width:1500px;margin:0 auto;padding:0 1.5rem 6rem}
@@ -20,7 +20,7 @@ header::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inh
 h1{font-size:1.2rem;margin:0;letter-spacing:-.01em}
 nav{display:flex;gap:2px;padding:2px;border-radius:calc(var(--r) / 2 + 2px);background:color-mix(in srgb,var(--mute) 18%,transparent)}
 nav button{border:0;background:none;border-radius:calc(var(--r) / 2);color:var(--mute);padding:.25rem .9rem}
-nav button[aria-current=page]{background:var(--field);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+nav button[aria-current=page]{color:var(--ink)}
 .ctl{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem;margin-left:auto;color:var(--mute)}
 input,select,button{font:inherit;padding:.3rem .65rem;border:1px solid var(--rule);border-radius:calc(var(--r) / 2);background:var(--field);color:var(--ink)}
 button{cursor:pointer}
@@ -121,7 +121,7 @@ body:not(.r-admin) .adm{display:none}body:not(.r-admin):not(.r-user) .edt{displa
 .ic.sm{font-size:1.3rem;line-height:1}.ic.sm img{width:1.6rem;height:1.6rem}
 /* Pastel: confetti, polka dots, drifting bubbles, candy-coloured tiles that hop when you point at them */
 [data-style=pastel] body{background:radial-gradient(circle at 6% 18%,#ffd1ea 0 9px,transparent 10px),radial-gradient(circle at 93% 12%,#d4c5ff 0 14px,transparent 15px),radial-gradient(circle at 88% 68%,#b9f3dc 0 8px,transparent 9px),radial-gradient(circle at 14% 82%,#ffe3b8 0 12px,transparent 13px),radial-gradient(circle at 52% 6%,#bfe4ff 0 7px,transparent 8px),radial-gradient(circle at 70% 92%,#ffc9d9 0 10px,transparent 11px),radial-gradient(circle,rgba(255,255,255,.85) 2px,transparent 2.6px) 0 0/30px 30px,radial-gradient(60rem 40rem at 10% -10%,var(--w1),transparent 60%),radial-gradient(50rem 40rem at 95% 5%,var(--w2),transparent 55%),radial-gradient(60rem 50rem at 60% 110%,var(--w3),transparent 55%),radial-gradient(45rem 35rem at 35% 55%,var(--w4),transparent 60%),var(--paper);background-attachment:fixed}
-[data-style=pastel] body::before{content:"";position:fixed;inset:-10%;z-index:-1;pointer-events:none;background:radial-gradient(circle at 20% 30%,rgba(255,170,215,.35) 0 8rem,transparent 8.1rem),radial-gradient(circle at 80% 20%,rgba(190,160,255,.35) 0 10rem,transparent 10.1rem),radial-gradient(circle at 70% 80%,rgba(150,230,200,.35) 0 9rem,transparent 9.1rem);filter:blur(30px);animation:drift 28s ease-in-out infinite alternate}
+[data-style=pastel] body::before{content:"";position:fixed;inset:-10%;z-index:-1;pointer-events:none;background:radial-gradient(circle 15rem at 20% 30%,rgba(255,170,215,.4),transparent),radial-gradient(circle 18rem at 80% 20%,rgba(190,160,255,.4),transparent),radial-gradient(circle 16rem at 70% 80%,rgba(150,230,200,.4),transparent);will-change:transform;animation:drift 28s ease-in-out infinite alternate}
 @keyframes drift{to{transform:translate(3%,-4%) scale(1.08)}}
 @keyframes twinkle{50%{opacity:.35;transform:scale(.8) rotate(20deg)}}
 @keyframes bob{50%{translate:0 -2px}}
@@ -132,25 +132,23 @@ body:not(.r-admin) .adm{display:none}body:not(.r-admin):not(.r-user) .edt{displa
 [data-style=pastel] .tile:nth-child(5n+3){--tint:rgba(130,225,190,.5);--edge:rgba(130,225,190,.65)}
 [data-style=pastel] .tile:nth-child(5n+4){--tint:rgba(255,200,140,.5);--edge:rgba(255,200,140,.7)}
 [data-style=pastel] .tile:nth-child(5n){--tint:rgba(140,200,255,.5);--edge:rgba(140,200,255,.7)}
-[data-style=pastel] #grid .tile:hover{translate:0 -4px;rotate:-.5deg}
-[data-style=pastel] #grid .tile:nth-child(even):hover{rotate:.5deg}
-[data-style=pastel] .editing #grid .tile:hover{translate:none;rotate:none}
 [data-style=pastel] .bn,[data-style=pastel] .tot b{background:linear-gradient(90deg,#ff6fae,#a46bff 50%,#3fb6ff);-webkit-background-clip:text;background-clip:text;color:transparent}
 [data-style=pastel] .tot b{font-weight:800}
 [data-style=pastel] .title{font-weight:800}
-[data-style=pastel] .title::before{content:"✿";color:var(--amber);margin-right:.35rem}
-[data-style=pastel] h1::after{content:"✦";color:#ffb347;margin-left:.25rem;animation:twinkle 2.4s ease-in-out infinite}
-[data-style=pastel] nav button::before{margin-right:.3rem}
-[data-style=pastel] nav [data-t=home]::before{content:"🏡"}[data-style=pastel] nav [data-t=network]::before{content:"🌈"}
-[data-style=pastel] nav [data-t=servers]::before{content:"🍭"}[data-style=pastel] nav [data-t=apps]::before{content:"🧁"}
-[data-style=pastel] nav button[aria-current=page]{background:linear-gradient(135deg,#ffd1e8,#d9ccff);color:#5a34b0;box-shadow:0 2px 0 rgba(160,120,230,.35)}
+[data-style=pastel]:not([data-fun=off]) .title::before{content:"✿";color:var(--amber);margin-right:.35rem}
+[data-style=pastel]:not([data-fun=off]) h1::after{content:"✦";color:#ffb347;margin-left:.25rem;animation:twinkle 2.4s ease-in-out infinite}
+[data-style=pastel]:not([data-fun=off]) nav button::before{margin-right:.3rem}
+[data-style=pastel]:not([data-fun=off]) nav [data-t=home]::before{content:"🏡"}[data-style=pastel]:not([data-fun=off]) nav [data-t=network]::before{content:"🌈"}
+[data-style=pastel]:not([data-fun=off]) nav [data-t=servers]::before{content:"🍭"}[data-style=pastel]:not([data-fun=off]) nav [data-t=apps]::before{content:"🧁"}
+[data-style=pastel] nav button[aria-current=page]{color:#5a34b0}
 [data-style=pastel] button:not(.lr):not(nav button){box-shadow:0 3px 0 rgba(160,120,230,.25);transition:translate .12s,box-shadow .12s}
 [data-style=pastel] button:not(.lr):not(nav button):active{translate:0 3px;box-shadow:none}
 [data-style=pastel] .pri,[data-style=pastel] .av{background:linear-gradient(135deg,#ff8fc0,#a46bff);border-color:transparent;color:#fff}
 [data-style=pastel] .pri{box-shadow:0 3px 0 #7a4fd6}
+[data-style=pastel] #pill{box-shadow:0 2px 0 rgba(160,120,230,.35)}
 [data-style=pastel] .dot{width:.8rem;height:.8rem;border:2px solid #fff;box-shadow:0 0 0 1px rgba(160,120,230,.25)}
-[data-style=pastel] .dot.up{animation:bob 2.2s ease-in-out infinite}
-[data-style=pastel] .card .logo{animation:float 3.2s ease-in-out infinite}
+[data-style=pastel]:not([data-fun=off]) .dot.up{animation:bob 2.2s ease-in-out infinite}
+[data-style=pastel]:not([data-fun=off]) .card .logo{animation:float 3.2s ease-in-out infinite}
 [data-style=pastel] dialog{border:3px solid #fff}
 [data-style=pastel] ::selection{background:#ffd1ea;color:#4a3570}
 [data-style=pastel] *{scrollbar-color:#cdb8ff transparent}
@@ -164,20 +162,59 @@ h1{order:1}.ctl{order:2;margin-left:auto}nav{order:3;flex-basis:100%}
 main{padding:0 .9rem 4rem}
 nav{max-width:100%;overflow-x:auto}nav button{padding:.25rem .7rem;white-space:nowrap}
 }
+/* tabs: one oval that glides to the selected page, in every style */
+nav{position:relative;border-radius:999px}
+nav button{position:relative;z-index:1}
+#pill{position:absolute;z-index:0;left:0;top:0;width:0;height:0;border-radius:999px;background:var(--pill,var(--field));box-shadow:0 1px 3px rgba(0,0,0,.15);opacity:0;pointer-events:none}
+#pill.on{transition:left .4s cubic-bezier(.34,1.3,.64,1),width .4s cubic-bezier(.34,1.3,.64,1),opacity .2s}
+[data-style=stark] #pill{box-shadow:0 0 12px color-mix(in srgb,var(--blue) 45%,transparent),inset 0 0 0 1px var(--blue)}
+/* tile hover effect, chosen in Settings: none, glow (in the style's own colour) or bounce */
+#grid .tile{transition:translate .35s cubic-bezier(.34,1.56,.64,1),rotate .35s cubic-bezier(.34,1.56,.64,1),box-shadow .25s}
+[data-hover=glow] #grid .tile:hover{box-shadow:var(--sh),0 0 0 2px color-mix(in srgb,var(--edge,var(--blue)) 70%,transparent),0 0 26px 3px color-mix(in srgb,var(--edge,var(--blue)) 55%,transparent)}
+[data-hover=bounce] #grid .tile:hover{translate:0 -4px;rotate:-.5deg}
+[data-hover=bounce] #grid .tile:nth-child(even):hover{rotate:.5deg}
+.editing #grid .tile:hover{translate:none!important;rotate:none!important;box-shadow:var(--sh)!important}
+/* polish shared by every style */
+button:not(.lr):not(nav button){transition:scale .12s}
+button:not(.lr):not(nav button):active{scale:.97}
+.dot.up{box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 22%,transparent)}
+.dot.down{box-shadow:0 0 0 3px color-mix(in srgb,var(--red) 22%,transparent)}
+dialog[open]{animation:pop .25s cubic-bezier(.2,.9,.3,1.2)}
+dialog[open]::backdrop{animation:fade .25s}
+@keyframes pop{from{opacity:0;scale:.96;translate:0 8px}}
+@keyframes fade{from{opacity:0}}
+*{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--mute) 45%,transparent) transparent}
+::selection{background:color-mix(in srgb,var(--blue) 28%,transparent)}
+@media(prefers-reduced-motion:reduce){dialog[open],dialog[open]::backdrop{animation:none}[data-hover=bounce] #grid .tile:hover{translate:none;rotate:none}}
 [data-style=stark] body{background:radial-gradient(900px 500px at 15% -5%,rgba(25,211,255,.13),transparent),repeating-linear-gradient(0deg,rgba(25,211,255,.04) 0 1px,transparent 1px 36px),repeating-linear-gradient(90deg,rgba(25,211,255,.04) 0 1px,transparent 1px 36px),var(--paper);background-attachment:fixed}
 [data-style=stark] h1{text-transform:uppercase;letter-spacing:.3em;font-size:1rem;color:var(--blue);text-shadow:0 0 10px var(--blue)}
 [data-style=stark] .logo{filter:drop-shadow(0 0 6px var(--blue))}
 [data-style=stark] .title,[data-style=stark] .lh,[data-style=stark] .tot small,[data-style=stark] nav button{text-transform:uppercase;letter-spacing:.12em;font-size:.75rem}
-[data-style=stark] nav button[aria-current=page]{color:var(--blue);box-shadow:0 0 10px color-mix(in srgb,var(--blue) 40%,transparent),inset 0 0 0 1px var(--blue)}
+[data-style=stark] nav button[aria-current=page]{color:var(--blue)}
 [data-style=stark] .tot b{color:var(--blue);text-shadow:0 0 14px color-mix(in srgb,var(--blue) 55%,transparent)}
 [data-style=stark] .tile::before,[data-style=stark] .tile::after{content:"";position:absolute;width:12px;height:12px;border:2px solid var(--blue);pointer-events:none;z-index:1}
 [data-style=stark] .tile::before{top:0;left:0;border-width:2px 0 0 2px}
 [data-style=stark] .tile::after{bottom:0;right:0;border-width:0 2px 2px 0}
 [data-style=stark] .dot.up{box-shadow:0 0 8px var(--ok)}[data-style=stark] .dot.down{box-shadow:0 0 8px var(--red)}
+/* Stark: HUD details */
+[data-style=stark] body::after{content:"";position:fixed;inset:0;z-index:50;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(25,211,255,.035) 0 1px,transparent 1px 3px)}
+@keyframes ping{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 60%,transparent)}100%{box-shadow:0 0 0 8px transparent}}
+@keyframes blink{50%{opacity:.3}}
+@keyframes breathe{50%{filter:drop-shadow(0 0 10px var(--blue))}}
+[data-style=stark] .dot.up{animation:ping 2.4s infinite}
+[data-style=stark] .dot.down{animation:blink 1.4s steps(2,start) infinite}
+[data-style=stark] .logo{animation:breathe 3.5s ease-in-out infinite}
+[data-style=stark] .lr:hover{box-shadow:inset 2px 0 0 var(--blue)}
+[data-style=stark] dialog{box-shadow:0 0 30px rgba(25,211,255,.18),inset 0 0 24px rgba(25,211,255,.05)}
+[data-style=stark] ::selection{background:rgba(25,211,255,.3);color:#fff}
+[data-style=stark] *{scrollbar-color:rgba(25,211,255,.4) transparent}
+[data-style=stark] .tile::before,[data-style=stark] .tile::after{transition:width .2s,height .2s}
+[data-hover=glow][data-style=stark] #grid .tile:hover::before,[data-hover=glow][data-style=stark] #grid .tile:hover::after{width:22px;height:22px}
+@media(prefers-reduced-motion:reduce){[data-style=stark] *{animation:none!important}}
 </style></head>
 <body class="booting"><main>
 <header><h1><span class="bl logo"></span><span class="bn">Beacon</span></h1>
-<nav id="tabs"><button data-t="home">Home</button><button data-t="network">Network</button><button data-t="servers">Servers</button><button data-t="apps">Apps</button></nav>
+<nav id="tabs"><i id="pill"></i><button data-t="home">Home</button><button data-t="network">Network</button><button data-t="servers">Servers</button><button data-t="apps">Apps</button></nav>
 <div class="ctl"><span id="stamp"></span>
 <select id="add" hidden></select>
 <button id="edit" hidden>Edit layout</button>
@@ -189,6 +226,8 @@ nav{max-width:100%;overflow-x:auto}nav button{padding:.25rem .7rem;white-space:n
 <section data-s="look"><h3>Appearance</h3>
 <label>Style <select id="style"><option value="honeycrisp">Honeycrisp</option><option value="pastel">Pastel</option><option value="stark">Stark</option></select></label>
 <label>Mode <select id="theme"><option value="auto">Auto</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
+<label>Hover effect <select id="hover"><option value="none">None</option><option value="glow">Glow</option><option value="bounce">Bounce</option></select></label>
+<label id="funRow" class="chk" hidden><input type="checkbox" id="fun"> Extra fun (emoji, sparkles and little animations)</label>
 <label>Show last <select id="range"><option value="15">15 minutes</option><option value="60" selected>1 hour</option><option value="360">6 hours</option><option value="1440">24 hours</option></select></label>
 <label class="chk"><input type="checkbox" id="bands"> Split client counts by band (2.4 / 5 / 6 GHz)</label>
 <p class="mute">Saved in this browser only. Mode applies to Honeycrisp; Pastel is always light and Stark always dark.</p></section>
@@ -638,9 +677,16 @@ async function loadS() {
 }
 const refresh = () => Promise.all([load(), loadS()]);
 
+function movePill() {  // the oval behind the selected tab glides to it
+  const b = $("#tabs button[aria-current=page]"), p = $("#pill");
+  if (!b) return;
+  p.style.left = b.offsetLeft + "px"; p.style.top = b.offsetTop + "px"; p.style.width = b.offsetWidth + "px"; p.style.height = b.offsetHeight + "px"; p.style.opacity = 1;
+  if (!p.classList.contains("on")) setTimeout(() => p.classList.add("on"), 60);  // no glide on the very first placement
+}
 function setTab(k) {
   tab = TABS.includes(k) ? k : "home";
   document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-current", b.dataset.t === tab ? "page" : "false"));
+  movePill();
   const lk = LISTS[tab];
   document.body.classList.toggle("listy", !!lk);
   $("#grid").hidden = tab === "apps";
@@ -654,6 +700,10 @@ function applyTheme(rebuild) {
   r.dataset.style = $("#style").value;
   if ($("#theme").value === "auto") r.removeAttribute("data-theme"); else r.dataset.theme = $("#theme").value;
   $("#theme").disabled = $("#style").value !== "honeycrisp";
+  const sty = $("#style").value, hv = lsGet("hover") || {honeycrisp: "glow", pastel: "bounce", stark: "glow"}[sty];  // until you pick one, each style has its own default
+  r.dataset.hover = hv; $("#hover").value = hv;
+  r.dataset.fun = lsGet("fun") === "0" ? "off" : "on"; $("#fun").checked = lsGet("fun") !== "0"; $("#funRow").hidden = sty !== "pastel";
+  requestAnimationFrame(movePill);
   Chart.defaults.color = g("--mute"); Chart.defaults.borderColor = g("--grid"); Chart.defaults.font.family = g("--font");
   if (rebuild) {  // charts take their colors at creation, so rebuild the tiles
     for (const k in els) { wipe(els[k]); delete els[k]; }
@@ -675,6 +725,9 @@ $("#range").onchange = refresh;
 $("#bands").onchange = e => { bandsOn = e.target.checked; lsSet("bands", bandsOn ? "1" : "0"); renderGrid(); };
 $("#style").onchange = () => { lsSet("style", $("#style").value); applyTheme(true); };
 $("#theme").onchange = () => { lsSet("theme", $("#theme").value); applyTheme(true); };
+$("#hover").onchange = () => { lsSet("hover", $("#hover").value); applyTheme(false); };
+$("#fun").onchange = () => { lsSet("fun", $("#fun").checked ? "1" : "0"); applyTheme(false); };
+new ResizeObserver(() => movePill()).observe($("#tabs")); document.fonts?.ready.then(movePill);
 matchMedia("(prefers-color-scheme: dark)").onchange = () => { if ($("#theme").value === "auto") applyTheme(true); };
 
 // ---- branding, sign-in, settings ----

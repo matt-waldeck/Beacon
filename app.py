@@ -7,7 +7,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 
 DATA = os.environ.get("DATA_DIR", "/data")
-VERSION = "0.3.3"
+VERSION = "0.3.4"
 CFG, SET, DB, DEV, SRV = (os.path.join(DATA, n) for n in ("config.json", "settings.json", "stats.db", "devices.json", "servers.json"))
 # Read-only /proc reads work on every UniFi device; mca-dump adds model/firmware/client count where present.
 CMD = "for f in uptime loadavg meminfo stat net/dev; do echo @@$f; cat /proc/$f; done; echo @@mca; mca-dump 2>/dev/null"

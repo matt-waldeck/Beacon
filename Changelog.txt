@@ -1,3 +1,9 @@
+v0.3.4 (2026-10-18)
+-Extended animations from Pastel to all themes.
+-Improved clarity of navigation bar.
+-Added option to remove extra icons in Pastel theme.
+-Polished all theme
+
 v0.3.3 (2026-10-18)
 -Lots of bugs squashed.
     -Changing the URL hash (for example opening #apps) while still signed out or loading threw a page error. It’s now harmless.
