@@ -1,4 +1,4 @@
-# Beacon — project context (v0.3.2)
+# Beacon — project context (v0.3.3)
 
 Beacon is a dead-simple, Grafana-style monitoring dashboard for homelabs: drag-and-drop grid, every tile configurable in place, built on data already collected. Reference points the author found too heavy or too light: CheckMK, Beszel, Uptime Kuma, Netdata.
 
@@ -11,18 +11,18 @@ Beacon is a dead-simple, Grafana-style monitoring dashboard for homelabs: drag-a
 ## Sign-in and roles
 - Session cookie (`beacon_session`, signed with `secret.key`), scrypt password hashes in `users.json`. Roles: admin (everything), user (edit layouts and apps), viewer (view only). Guest = view-only profile with no sign-in, off by default, toggled in Settings > Users.
 - Open routes: `/`, `/healthz`, `GET /api/me`, `GET /api/brand`, `POST /api/login`. Everything else needs a session; `PUT /api/dash` needs user+, other writes need admin. 5 failed sign-ins per 5 minutes per client IP locks that IP out.
-- Env: `UI_USER` (default admin) and `UI_PASSWORD` (always resets that user's password at start, creates the admin if missing); with neither, a random admin password is printed once in the log. `UI_AUTH=off` removes sign-in entirely (proxy-side auth). `TRUST_PROXY=1` reads the client IP from X-Forwarded-For. `COOKIE_SECURE=1` over HTTPS. Responses carry CSP and nosniff headers.
+- Env: `UI_USER` (default admin) and `UI_PASSWORD` (always resets that user's password at start, creates the admin if missing); with neither, a random admin password is printed once in the log. `UI_AUTH=off` removes sign-in entirely (proxy-side auth). `TRUST_PROXY=1` reads the client IP from X-Forwarded-For. `COOKIE_SECURE=1` over HTTPS (switches accept 1/true/yes/on). Responses carry CSP and nosniff headers.
 
 ## Branding
 `brand.json`: name, tab title, sign-in message, logo and favicon (stored as data URIs, validated server-side, 500 KB max). Edited in Settings > Branding; public read so the sign-in screen can use it.
 
 ## Styles
-Honeycrisp (default; Liquid Glass-inspired: wallpaper gradient, frosted tiles, floating capsule header; light/dark/auto), Pastel (same glass, candy colours, light only), Stark (HUD, dark only). All CSS variables on `:root`, chosen in Settings > Appearance (per browser).
+Honeycrisp (default; Liquid Glass-inspired: wallpaper gradient, frosted tiles, floating capsule header; light/dark/auto), Pastel (candy colours, confetti and drifting bubbles, tiles that hop on hover, emoji tabs; light only), Stark (HUD, dark only). All CSS variables on `:root`, chosen in Settings > Appearance (per browser).
 
 ## Dashboard model
 - `dash.json` (v "0.3"): `{v, apps: {id: {name, url, icon}}, tabs: {home|network|servers|apps: [tile]}}`. Tile: `{id, type, ref, x, y, w, h}` on a 12-column grid; `new: true` tiles are unsaved.
 - Tile types: `stat`/`chart` (ref = key in `CAT` in index.html), `summary`, `app` (Home only). To add a tracked value: a `CAT` entry plus a `STAT` or `CHART` function.
-- Lists are not tiles. Network and Servers = a tile grid on top (default: four tiles) and a scrollable list panel (`#lp`) filling the rest of the screen; rows expand for details and graphs; add/edit/remove inline (admin). Servers have a type (`server` or `vm`, stored in `servers.json`). Apps = a list only, no grid: click a row to open the app, Edit (user+) for the form, Add to/Remove from Home; the catalog is `D.apps`; blank icon = lookup by name (Dashboard Icons, then selfh.st, then first letter).
+- On phones (under 700px) the grid becomes two stacked columns and layout editing is hidden. Lists are not tiles. Network and Servers = a tile grid on top (default: four tiles) and a scrollable list panel (`#lp`) filling the rest of the screen; rows expand for details and graphs; add/edit/remove inline (admin). Servers have a type (`server` or `vm`, stored in `servers.json`). Apps = a list only, no grid: click a row to open the app, Edit (user+) for the form, Add to/Remove from Home; the catalog is `D.apps`; blank icon = lookup by name (Dashboard Icons, then selfh.st, then first letter).
 - Layout rule: tiles fall upward until they rest on another; the dragged tile is pinned.
 
 ## API

@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>Beacon</title>
 <link rel="icon" id="fav" href="data:,">
 <script>try{var d=document.documentElement,s=localStorage.getItem("style"),t=localStorage.getItem("theme");if(s)d.dataset.style=s;if(t&&t!=="auto")d.dataset.theme=t}catch(e){}</script>
@@ -10,7 +11,7 @@
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--ink:#f5f5f7;--paper:#000;--rule:rgba(255,255,255,.12);--grid:rgba(255,255,255,.08);--field:#1c1c1e;--blue:#0a84ff;--amber:#ff9f0a;--red:#ff453a;--ok:#30d158;--mute:#98989d;--sh:inset 0 1px 0 var(--hi),inset 0 0 0 1px var(--hi2),0 1px 1px rgba(0,0,0,.3),0 14px 34px rgba(0,0,0,.45);--glass:rgba(48,48,56,.5);--glass2:rgba(255,255,255,.05);--hi:rgba(255,255,255,.16);--hi2:rgba(255,255,255,.07);--w1:#1c3a78;--w2:#4b2263;--w3:#0d4a44}}
 :root[data-style="stark"]{color-scheme:dark;--r:2px;--font:ui-monospace,"SF Mono",Menlo,Consolas,monospace;--ink:#d8f6ff;--paper:#04080d;--rule:rgba(25,211,255,.3);--grid:rgba(25,211,255,.1);--field:rgba(6,16,26,.85);--blue:#19d3ff;--on-blue:#021018;--amber:#ff9f2e;--red:#ff4d5e;--ok:#2dffa0;--mute:#6fa8bd;--sh:0 0 18px rgba(25,211,255,.12),inset 0 0 24px rgba(25,211,255,.05);--glass:var(--field);--glass2:rgba(25,211,255,.05);--hi:transparent;--hi2:transparent}
 /* Pastel: Honeycrisp's glass, but candy-coloured */
-:root[data-style="pastel"]{color-scheme:light;--r:28px;--font:ui-rounded,"SF Pro Rounded","Nunito","Quicksand",-apple-system,system-ui,sans-serif;--ink:#3b2f5c;--paper:#fff6fb;--rule:rgba(120,90,200,.16);--grid:rgba(120,90,200,.1);--field:#fff;--blue:#8b6cf6;--on-blue:#fff;--amber:#ff8fa3;--red:#e5484d;--ok:#2fbf8f;--mute:#8a7fae;--sh:inset 0 1px 0 var(--hi),inset 0 0 0 1px var(--hi2),0 2px 2px rgba(120,80,200,.06),0 16px 36px rgba(139,108,246,.18);--glass:rgba(255,255,255,.6);--glass2:rgba(255,255,255,.5);--hi:rgba(255,255,255,.95);--hi2:rgba(255,255,255,.6);--w1:#ffc3e0;--w2:#cdbbff;--w3:#b4f0dc;--w4:#ffe2b8}
+:root[data-style="pastel"]{color-scheme:light;--r:30px;--font:ui-rounded,"SF Pro Rounded","Nunito","Quicksand","Varela Round",-apple-system,system-ui,sans-serif;--ink:#4a3570;--paper:#fff3fa;--rule:rgba(160,120,230,.22);--grid:rgba(160,120,230,.12);--field:#fff;--blue:#9a6bff;--on-blue:#fff;--amber:#ff7fa8;--red:#ff5c7a;--ok:#27c99a;--mute:#9a86c0;--sh:0 5px 0 var(--edge,rgba(190,160,255,.55)),0 18px 34px rgba(160,100,255,.20);--glass:rgba(255,255,255,.72);--glass2:rgba(255,255,255,.6);--hi:#fff;--hi2:rgba(255,255,255,.7);--w1:#ffb8dc;--w2:#c9b2ff;--w3:#a8f0d6;--w4:#ffdca8;--edge:rgba(190,160,255,.55)}
 *{box-sizing:border-box}
 body{margin:0;background:radial-gradient(60rem 40rem at 10% -10%,var(--w1),transparent 60%),radial-gradient(50rem 40rem at 95% 5%,var(--w2),transparent 55%),radial-gradient(60rem 50rem at 60% 110%,var(--w3),transparent 55%),radial-gradient(45rem 35rem at 35% 55%,var(--w4,transparent),transparent 60%),var(--paper);background-attachment:fixed;color:var(--ink);font:15px/1.5 var(--font);-webkit-font-smoothing:antialiased}
 main{max-width:1500px;margin:0 auto;padding:0 1.5rem 6rem}
@@ -71,7 +72,7 @@ form.cfg input{width:100%}
 .fm2{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;padding:.6rem .9rem}
 .dev{display:grid;grid-template-columns:11rem 1fr 1fr;gap:1rem}.dev.two{grid-template-columns:11rem 1fr}
 .ch{position:relative;min-width:0;min-height:0}
-@container(max-width:560px){.dev,.dev.two{grid-template-columns:1fr;grid-auto-rows:minmax(160px,auto);height:auto!important}.lh span:nth-child(3),.lr .c2{display:none}}
+@container(max-width:560px){.dev,.dev.two{grid-template-columns:1fr;grid-auto-rows:minmax(160px,auto);height:auto!important}.lh span:nth-child(3),.lr .c2{display:none}.tile.list:not(.apps) .lh,.tile.list:not(.apps) .lr{grid-template-columns:minmax(0,1.3fr) minmax(0,1.3fr) 3rem .8rem;gap:.5rem}.nm small{display:none}}
 dl{display:grid;grid-template-columns:auto 1fr;gap:.2rem .75rem;margin:0}
 dt{color:var(--mute)}dd{margin:0}dt.sub{padding-left:1rem}
 .sum{display:flex;flex-wrap:wrap;gap:.75rem 2rem}
@@ -109,16 +110,6 @@ dialog::backdrop{background:rgba(0,0,0,.28);backdrop-filter:blur(4px)}
 .ur{display:grid;grid-template-columns:1fr auto 1fr auto auto;gap:.5rem;align-items:center;padding:.4rem 0;border-bottom:1px solid var(--rule)}
 .row2{display:flex;flex-wrap:wrap;gap:.5rem}
 @media(max-width:640px){dialog[open]{grid-template-columns:1fr;grid-template-rows:auto 1fr}#sn{flex-direction:row;overflow:auto;border-right:0;border-bottom:1px solid var(--rule);padding:.6rem}.ur{grid-template-columns:1fr 1fr}}
-[data-style=pastel] .tile{background:linear-gradient(150deg,var(--tint,transparent),transparent 70%),var(--glass)}
-[data-style=pastel] .tile:nth-child(5n+1){--tint:rgba(255,160,205,.42)}[data-style=pastel] .tile:nth-child(5n+2){--tint:rgba(185,165,255,.42)}
-[data-style=pastel] .tile:nth-child(5n+3){--tint:rgba(150,228,200,.45)}[data-style=pastel] .tile:nth-child(5n+4){--tint:rgba(255,205,150,.45)}
-[data-style=pastel] .tile:nth-child(5n){--tint:rgba(150,200,255,.45)}
-[data-style=pastel] .bn{background:linear-gradient(90deg,#ff6fae,#8b6cf6 55%,#3fb6ff);-webkit-background-clip:text;background-clip:text;color:transparent}
-[data-style=pastel] .tot b{background:linear-gradient(90deg,#ff6fae,#8b6cf6);-webkit-background-clip:text;background-clip:text;color:transparent}
-[data-style=pastel] .pri,[data-style=pastel] .av{background:linear-gradient(135deg,#ff8fb8,#8b6cf6);border-color:transparent}
-[data-style=pastel] nav button[aria-current=page]{background:linear-gradient(135deg,#ffd1e8,#d9ccff);color:#4a2f8f}
-[data-style=pastel] h1::after{content:"✦";color:#ffb347;font-size:.9rem}
-[data-style=pastel] .dot{width:.75rem;height:.75rem}
 body.listy main{height:100vh;height:100dvh;overflow:auto;display:flex;flex-direction:column;padding-bottom:1rem}
 body.listy #grid{flex:none}
 #lpanel{display:none}body.listy #lpanel{display:flex;flex:1 0 18rem;min-height:0;margin-top:12px}
@@ -128,6 +119,51 @@ body:not(.r-admin) .adm{display:none}body:not(.r-admin):not(.r-user) .edt{displa
 .apps .lh,.apps .lr{grid-template-columns:minmax(0,2fr) minmax(0,3fr) 4.5rem}
 .ar{cursor:pointer}a.nm{color:inherit;text-decoration:none}
 .ic.sm{font-size:1.3rem;line-height:1}.ic.sm img{width:1.6rem;height:1.6rem}
+/* Pastel: confetti, polka dots, drifting bubbles, candy-coloured tiles that hop when you point at them */
+[data-style=pastel] body{background:radial-gradient(circle at 6% 18%,#ffd1ea 0 9px,transparent 10px),radial-gradient(circle at 93% 12%,#d4c5ff 0 14px,transparent 15px),radial-gradient(circle at 88% 68%,#b9f3dc 0 8px,transparent 9px),radial-gradient(circle at 14% 82%,#ffe3b8 0 12px,transparent 13px),radial-gradient(circle at 52% 6%,#bfe4ff 0 7px,transparent 8px),radial-gradient(circle at 70% 92%,#ffc9d9 0 10px,transparent 11px),radial-gradient(circle,rgba(255,255,255,.85) 2px,transparent 2.6px) 0 0/30px 30px,radial-gradient(60rem 40rem at 10% -10%,var(--w1),transparent 60%),radial-gradient(50rem 40rem at 95% 5%,var(--w2),transparent 55%),radial-gradient(60rem 50rem at 60% 110%,var(--w3),transparent 55%),radial-gradient(45rem 35rem at 35% 55%,var(--w4),transparent 60%),var(--paper);background-attachment:fixed}
+[data-style=pastel] body::before{content:"";position:fixed;inset:-10%;z-index:-1;pointer-events:none;background:radial-gradient(circle at 20% 30%,rgba(255,170,215,.35) 0 8rem,transparent 8.1rem),radial-gradient(circle at 80% 20%,rgba(190,160,255,.35) 0 10rem,transparent 10.1rem),radial-gradient(circle at 70% 80%,rgba(150,230,200,.35) 0 9rem,transparent 9.1rem);filter:blur(30px);animation:drift 28s ease-in-out infinite alternate}
+@keyframes drift{to{transform:translate(3%,-4%) scale(1.08)}}
+@keyframes twinkle{50%{opacity:.35;transform:scale(.8) rotate(20deg)}}
+@keyframes bob{50%{translate:0 -2px}}
+@keyframes float{50%{translate:0 -8px;rotate:6deg}}
+[data-style=pastel] .tile{background:linear-gradient(150deg,var(--tint,transparent),transparent 72%),var(--glass);border:3px solid #fff;transition:translate .35s cubic-bezier(.34,1.56,.64,1),rotate .35s cubic-bezier(.34,1.56,.64,1)}
+[data-style=pastel] .tile:nth-child(5n+1){--tint:rgba(255,150,205,.45);--edge:rgba(255,160,210,.6)}
+[data-style=pastel] .tile:nth-child(5n+2){--tint:rgba(180,150,255,.45);--edge:rgba(180,150,255,.6)}
+[data-style=pastel] .tile:nth-child(5n+3){--tint:rgba(130,225,190,.5);--edge:rgba(130,225,190,.65)}
+[data-style=pastel] .tile:nth-child(5n+4){--tint:rgba(255,200,140,.5);--edge:rgba(255,200,140,.7)}
+[data-style=pastel] .tile:nth-child(5n){--tint:rgba(140,200,255,.5);--edge:rgba(140,200,255,.7)}
+[data-style=pastel] #grid .tile:hover{translate:0 -4px;rotate:-.5deg}
+[data-style=pastel] #grid .tile:nth-child(even):hover{rotate:.5deg}
+[data-style=pastel] .editing #grid .tile:hover{translate:none;rotate:none}
+[data-style=pastel] .bn,[data-style=pastel] .tot b{background:linear-gradient(90deg,#ff6fae,#a46bff 50%,#3fb6ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+[data-style=pastel] .tot b{font-weight:800}
+[data-style=pastel] .title{font-weight:800}
+[data-style=pastel] .title::before{content:"✿";color:var(--amber);margin-right:.35rem}
+[data-style=pastel] h1::after{content:"✦";color:#ffb347;margin-left:.25rem;animation:twinkle 2.4s ease-in-out infinite}
+[data-style=pastel] nav button::before{margin-right:.3rem}
+[data-style=pastel] nav [data-t=home]::before{content:"🏡"}[data-style=pastel] nav [data-t=network]::before{content:"🌈"}
+[data-style=pastel] nav [data-t=servers]::before{content:"🍭"}[data-style=pastel] nav [data-t=apps]::before{content:"🧁"}
+[data-style=pastel] nav button[aria-current=page]{background:linear-gradient(135deg,#ffd1e8,#d9ccff);color:#5a34b0;box-shadow:0 2px 0 rgba(160,120,230,.35)}
+[data-style=pastel] button:not(.lr):not(nav button){box-shadow:0 3px 0 rgba(160,120,230,.25);transition:translate .12s,box-shadow .12s}
+[data-style=pastel] button:not(.lr):not(nav button):active{translate:0 3px;box-shadow:none}
+[data-style=pastel] .pri,[data-style=pastel] .av{background:linear-gradient(135deg,#ff8fc0,#a46bff);border-color:transparent;color:#fff}
+[data-style=pastel] .pri{box-shadow:0 3px 0 #7a4fd6}
+[data-style=pastel] .dot{width:.8rem;height:.8rem;border:2px solid #fff;box-shadow:0 0 0 1px rgba(160,120,230,.25)}
+[data-style=pastel] .dot.up{animation:bob 2.2s ease-in-out infinite}
+[data-style=pastel] .card .logo{animation:float 3.2s ease-in-out infinite}
+[data-style=pastel] dialog{border:3px solid #fff}
+[data-style=pastel] ::selection{background:#ffd1ea;color:#4a3570}
+[data-style=pastel] *{scrollbar-color:#cdb8ff transparent}
+@media(prefers-reduced-motion:reduce){[data-style=pastel] *,[data-style=pastel] *::before,[data-style=pastel] *::after{animation:none!important;transition:none!important}}
+@media(max-width:700px){
+#grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(60px,auto)}
+.t-chart{min-height:220px}
+h1{order:1}.ctl{order:2;margin-left:auto}nav{order:3;flex-basis:100%}
+#grid .tile{grid-column:auto / span var(--m,1)!important;grid-row:auto / span var(--h,3)!important}
+#edit,#stamp{display:none!important}
+main{padding:0 .9rem 4rem}
+nav{max-width:100%;overflow-x:auto}nav button{padding:.25rem .7rem;white-space:nowrap}
+}
 [data-style=stark] body{background:radial-gradient(900px 500px at 15% -5%,rgba(25,211,255,.13),transparent),repeating-linear-gradient(0deg,rgba(25,211,255,.04) 0 1px,transparent 1px 36px),repeating-linear-gradient(90deg,rgba(25,211,255,.04) 0 1px,transparent 1px 36px),var(--paper);background-attachment:fixed}
 [data-style=stark] h1{text-transform:uppercase;letter-spacing:.3em;font-size:1rem;color:var(--blue);text-shadow:0 0 10px var(--blue)}
 [data-style=stark] .logo{filter:drop-shadow(0 0 6px var(--blue))}
@@ -158,7 +194,8 @@ body:not(.r-admin) .adm{display:none}body:not(.r-admin):not(.r-user) .edt{displa
 <p class="mute">Saved in this browser only. Mode applies to Honeycrisp; Pastel is always light and Stark always dark.</p></section>
 <section data-s="mon" hidden><h3>Monitoring</h3>
 <div class="row"><label>Network checks every <input id="iv" type="number" min="5" max="3600"> s</label><button id="save" class="pri">Save</button></div>
-<div class="row"><label>Server pings every <input id="siv" type="number" min="5" max="3600"> s</label><button id="ssave" class="pri">Save</button></div></section>
+<div class="row"><label>Server pings every <input id="siv" type="number" min="5" max="3600"> s</label><button id="ssave" class="pri">Save</button></div>
+<span id="mmsg" class="mute"></span></section>
 <section data-s="brand" hidden><h3>Branding</h3>
 <label>Name <input id="b-name" maxlength="40"></label>
 <label>Browser tab title <input id="b-tab" maxlength="80" placeholder="Same as the name"></label>
@@ -214,7 +251,7 @@ const DEF = {
 };
 let D = {}, DATA = {devices: []}, SERV = {servers: []}, tab = "home", edit = false, iv = 30, siv = 15, timer, stimer, st, bandsOn = false;
 const els = {}, lists = {};
-const tiles = () => D.tabs[tab] ||= [];
+const tiles = () => ((D.tabs ||= {})[tab] ||= []);
 const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
 const esc = t => String(t ?? "–").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
@@ -531,6 +568,7 @@ function renderGrid() {
   list.forEach(t => {
     const el = els[tab + t.id] ||= build(t);
     el.style.gridColumn = `${t.x + 1} / span ${t.w}`; el.style.gridRow = `${t.y + 1} / span ${t.h}`;
+    el.style.setProperty("--m", t.w >= 6 ? 2 : 1); el.style.setProperty("--h", t.h); el.style.order = t.y * 20 + t.x;  // used by the phone layout
     el.style.transform = ""; el.classList.remove("lift");
     if (el.parentNode !== gr) gr.append(el);
     update(t, el);
@@ -585,6 +623,7 @@ $("#add").onchange = e => {
 async function load() {
   try {
     DATA = await api("GET", `/api/data?minutes=${$("#range").value}`);
+    if (!ME) return;
     iv = DATA.interval; siv = DATA.server_interval; $("#ver").textContent = "Version " + DATA.version;
     if (document.activeElement !== $("#iv")) $("#iv").value = iv;
     if (document.activeElement !== $("#siv")) $("#siv").value = siv;
@@ -594,7 +633,7 @@ async function load() {
   clearTimeout(timer); if (ME) timer = setTimeout(load, iv * 1000);
 }
 async function loadS() {
-  try { SERV = await api("GET", `/api/servers?minutes=${$("#range").value}`); siv = SERV.interval; renderGrid(); } catch (e) {}
+  try { SERV = await api("GET", `/api/servers?minutes=${$("#range").value}`); if (!ME) return; siv = SERV.interval; renderGrid(); } catch (e) {}
   clearTimeout(stimer); if (ME) stimer = setTimeout(loadS, siv * 1000);
 }
 const refresh = () => Promise.all([load(), loadS()]);
@@ -606,6 +645,7 @@ function setTab(k) {
   document.body.classList.toggle("listy", !!lk);
   $("#grid").hidden = tab === "apps";
   if (lk) { lists[lk] ||= buildList(lk); $("#lpanel").replaceChildren(lists[lk]); } else $("#lpanel").replaceChildren();
+  if (tab === "apps" && edit) $("#edit").click();  // nothing to arrange on Apps, so leave edit mode
   $("#edit").hidden = !can(2) || tab === "apps";
   renderGrid(); fillAdd();
 }
@@ -623,12 +663,12 @@ function applyTheme(rebuild) {
 }
 
 $("#tabs").onclick = e => { const b = e.target.closest("button"); if (b) location.hash = b.dataset.t; };
-addEventListener("hashchange", () => setTab(location.hash.slice(1)));
+addEventListener("hashchange", () => { if (ME && D.tabs) setTab(location.hash.slice(1)); });
 $("#edit").onclick = () => {
   edit = !edit; document.body.classList.toggle("editing", edit);
   $("#edit").textContent = edit ? "Done" : "Edit layout"; $("#edit").classList.toggle("pri", edit); fillAdd();
 };
-const setIv = (id, key) => () => api("POST", "/api/settings", {[key]: +$(id).value}).then(refresh).catch(x => alert(x.message));
+const setIv = (id, key) => () => api("POST", "/api/settings", {[key]: +$(id).value}).then(() => { $("#mmsg").textContent = "Saved."; refresh(); }).catch(x => { $("#mmsg").textContent = x.message; });
 $("#save").onclick = setIv("#iv", "interval");
 $("#ssave").onclick = setIv("#siv", "server_interval");
 $("#range").onchange = refresh;

@@ -7,7 +7,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 
 DATA = os.environ.get("DATA_DIR", "/data")
-VERSION = "0.3.2"
+VERSION = "0.3.3"
 CFG, SET, DB, DEV, SRV = (os.path.join(DATA, n) for n in ("config.json", "settings.json", "stats.db", "devices.json", "servers.json"))
 # Read-only /proc reads work on every UniFi device; mca-dump adds model/firmware/client count where present.
 CMD = "for f in uptime loadavg meminfo stat net/dev; do echo @@$f; cat /proc/$f; done; echo @@mca; mca-dump 2>/dev/null"
@@ -194,7 +194,11 @@ BRAND_FILE = os.path.join(DATA, "brand.json")
 AUTH_OFF = os.environ.get("UI_AUTH", "").lower() == "off"
 LEVEL = {"admin": 3, "user": 2, "viewer": 1, "guest": 1}  # admin: everything, user: edit layouts and apps, viewer/guest: view only
 fails = {}  # recent failed sign-ins per client
-if os.environ.get("TRUST_PROXY"):  # behind a reverse proxy: take the client IP from X-Forwarded-For
+def flag(name):  # "1", "true", "yes" or "on" turn a switch on; "0" or blank leave it off
+    return os.environ.get(name, "").strip().lower() in ("1", "true", "yes", "on")
+
+
+if flag("TRUST_PROXY"):  # behind a reverse proxy: take the client IP from X-Forwarded-For
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 
@@ -213,7 +217,7 @@ def secret():
 
 app.secret_key = secret()
 app.config.update(SESSION_COOKIE_NAME="beacon_session", SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax",
-                  SESSION_COOKIE_SECURE=bool(os.environ.get("COOKIE_SECURE")), PERMANENT_SESSION_LIFETIME=timedelta(days=30),
+                  SESSION_COOKIE_SECURE=flag("COOKIE_SECURE"), PERMANENT_SESSION_LIFETIME=timedelta(days=30),
                   MAX_CONTENT_LENGTH=3_000_000)
 
 

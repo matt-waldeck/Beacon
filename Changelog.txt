@@ -1,3 +1,13 @@
+v0.3.3 (2026-10-18)
+-Lots of bugs squashed.
+    -Changing the URL hash (for example opening #apps) while still signed out or loading threw a page error. It’s now harmless.
+    -Data responses that arrived after you signed out are ignored instead of redrawing the page.
+    -Leaving the Apps tab while in Edit layout mode no longer leaves you stuck, since the button is hidden there. It now exits edit mode.
+    -COOKIE_SECURE=0 and TRUST_PROXY=0 used to switch those options on, because any non-empty value counted. Only 1, true, yes and on do now.
+-Reworked Pastel theme.
+-Improved mobile friendliness.
+-Added /healthz check for Portainer.
+
 v0.3.2 (2026-10-16)
 -Fixed issue preventing Network and Server devices from displaying properly.
 -The “Continue as guest” button now appears after sign-out, even if guest access was switched on after the page loaded.
@@ -24,7 +34,6 @@ v0.2.1 (2026-10-15)
     -On by default.
     -Set TRUST_PROXY=1 so the lockout uses the real client address rather than the proxy's.
     -if proxy handling login, set ui_auth=off and make sure it isn't reachable directly.
-
 
 v0.2.0 (2026-10-14)
 -Redesigned network tab to better suit tiling system and large device counts.
