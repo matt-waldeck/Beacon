@@ -2,12 +2,12 @@ import hashlib, json, os, re, secrets, sqlite3, subprocess, threading, time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 import paramiko
-from flask import Flask, jsonify, request, send_file, session
+from flask import Flask, g, jsonify, request, send_file, session
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 
 DATA = os.environ.get("DATA_DIR", "/data")
-VERSION = "0.3.4"
+VERSION = "0.4.0"
 CFG, SET, DB, DEV, SRV = (os.path.join(DATA, n) for n in ("config.json", "settings.json", "stats.db", "devices.json", "servers.json"))
 # Read-only /proc reads work on every UniFi device; mca-dump adds model/firmware/client count where present.
 CMD = "for f in uptime loadavg meminfo stat net/dev; do echo @@$f; cat /proc/$f; done; echo @@mca; mca-dump 2>/dev/null"
@@ -56,7 +56,7 @@ def conf():
             s = json.load(f)
     except Exception:
         s = {}
-    return {"interval": s.get("interval", cfg().get("interval", 30)), "server_interval": s.get("server_interval", 15), "guest": bool(s.get("guest", False))}
+    return {"interval": s.get("interval", cfg().get("interval", 30)), "server_interval": s.get("server_interval", 15), "guest": bool(s.get("guest", False)), "idle_minutes": int(s.get("idle_minutes", 10))}
 
 
 def interval():
@@ -179,6 +179,8 @@ def set_settings():
             s[k] = max(5, min(3600, int(j[k])))
     if "guest" in j:
         s["guest"] = bool(j["guest"])
+    if "idle_minutes" in j:
+        s["idle_minutes"] = max(0, min(1440, int(j["idle_minutes"])))  # 0 = never sign out
     with open(SET, "w") as f:
         json.dump(s, f)
     wake.set()
@@ -271,6 +273,11 @@ def who():
     if n:
         u = next((x for x in users() if x["name"] == n), None)
         if u and session.get("h") == u["hash"][-12:]:
+            now, idle = int(time.time()), conf()["idle_minutes"] * 60
+            if idle and not session.get("r") and now - session.get("t", now) > idle:  # no "keep me signed in", and idle too long
+                session.clear()
+                g.expired = True
+                return None
             return {"name": n, "role": u["role"]}
         session.clear()
     if session.get("g") and conf()["guest"]:
@@ -278,6 +285,7 @@ def who():
     return None
 
 
+PASSIVE = {"/api/data", "/api/servers"}  # background polling: does not count as someone using the page
 OPEN = {("GET", "/"), ("GET", "/healthz"), ("GET", "/api/me"), ("GET", "/api/brand"), ("POST", "/api/login")}
 
 
@@ -288,10 +296,13 @@ def guard():
         return None
     me = who()
     if not me:
-        return jsonify(error="Please sign in."), 401
-    need = 1 if p in ("/api/logout", "/api/me/password") or (m == "GET" and p != "/api/users") else 2 if (m, p) == ("PUT", "/api/dash") else 3
+        exp = bool(g.get("expired"))
+        return jsonify(error="You were signed out after a period of inactivity." if exp else "Please sign in.", expired=exp), 401
+    need = 1 if p in ("/api/logout", "/api/me/password", "/api/activity") or (m == "GET" and p != "/api/users") else 2 if (m, p) == ("PUT", "/api/dash") else 3
     if LEVEL[me["role"]] < need:
         return jsonify(error="You don't have permission to do that."), 403
+    if session.get("u") and not (m == "GET" and p in PASSIVE) and time.time() - session.get("t", 0) > 15:
+        session["t"] = int(time.time())  # real use keeps a session alive
 
 
 @app.after_request
@@ -435,7 +446,7 @@ def servers_data():
 
 @app.get("/api/me")
 def me():
-    return jsonify(user=who(), guest=conf()["guest"], auth=not AUTH_OFF, version=VERSION)
+    return jsonify(user=who(), guest=conf()["guest"], auth=not AUTH_OFF, version=VERSION, idle=conf()["idle_minutes"], remember=bool(session.get("r")))
 
 
 @app.post("/api/login")
@@ -459,6 +470,7 @@ def login():
         return bad("Wrong name or password.", 401)
     session.clear()
     session["u"], session["h"], session.permanent = u["name"], u["hash"][-12:], bool(j.get("remember"))
+    session["t"], session["r"] = int(time.time()), 1 if j.get("remember") else 0
     return jsonify(ok=True)
 
 
@@ -570,6 +582,11 @@ def put_brand():
     with open(BRAND_FILE, "w") as f:
         json.dump(b, f)
     return jsonify(b)
+
+
+@app.post("/api/activity")
+def activity():  # the page reports that someone is really using it
+    return jsonify(ok=True)
 
 
 threading.Thread(target=loop, daemon=True).start()

@@ -72,7 +72,7 @@ form.cfg input{width:100%}
 .fm2{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;padding:.6rem .9rem}
 .dev{display:grid;grid-template-columns:11rem 1fr 1fr;gap:1rem}.dev.two{grid-template-columns:11rem 1fr}
 .ch{position:relative;min-width:0;min-height:0}
-@container(max-width:560px){.dev,.dev.two{grid-template-columns:1fr;grid-auto-rows:minmax(160px,auto);height:auto!important}.lh span:nth-child(3),.lr .c2{display:none}.tile.list:not(.apps) .lh,.tile.list:not(.apps) .lr{grid-template-columns:minmax(0,1.3fr) minmax(0,1.3fr) 3rem .8rem;gap:.5rem}.nm small{display:none}}
+@container(max-width:560px){.dev,.dev.two{grid-template-columns:1fr;grid-auto-rows:minmax(160px,auto);height:auto!important}.lh > :nth-child(3),.lr .c2{display:none}.tile.list:not(.apps) .lh,.tile.list:not(.apps) .lr{grid-template-columns:minmax(0,1.3fr) minmax(0,1.3fr) 3rem .8rem;gap:.5rem}.nm small{display:none}}
 dl{display:grid;grid-template-columns:auto 1fr;gap:.2rem .75rem;margin:0}
 dt{color:var(--mute)}dd{margin:0}dt.sub{padding-left:1rem}
 .sum{display:flex;flex-wrap:wrap;gap:.75rem 2rem}
@@ -186,6 +186,10 @@ dialog[open]::backdrop{animation:fade .25s}
 *{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--mute) 45%,transparent) transparent}
 ::selection{background:color-mix(in srgb,var(--blue) 28%,transparent)}
 @media(prefers-reduced-motion:reduce){dialog[open],dialog[open]::backdrop{animation:none}[data-hover=bounce] #grid .tile:hover{translate:none;rotate:none}}
+.tile.list .lh .hs{border:0;background:none;padding:0;box-shadow:none;border-radius:0;color:inherit;font:inherit;text-transform:inherit;letter-spacing:inherit;text-align:left;cursor:pointer}
+.tile.list .lh .hs:hover{color:var(--ink)}.lh .hs i{font-style:normal;color:var(--blue)}
+.uw{position:relative}.menu.sm{width:13rem}
+.pick{display:grid;gap:.5rem;align-content:center;height:100%}.pick select{width:100%}
 [data-style=stark] body{background:radial-gradient(900px 500px at 15% -5%,rgba(25,211,255,.13),transparent),repeating-linear-gradient(0deg,rgba(25,211,255,.04) 0 1px,transparent 1px 36px),repeating-linear-gradient(90deg,rgba(25,211,255,.04) 0 1px,transparent 1px 36px),var(--paper);background-attachment:fixed}
 [data-style=stark] h1{text-transform:uppercase;letter-spacing:.3em;font-size:1rem;color:var(--blue);text-shadow:0 0 10px var(--blue)}
 [data-style=stark] .logo{filter:drop-shadow(0 0 6px var(--blue))}
@@ -219,9 +223,10 @@ dialog[open]::backdrop{animation:fade .25s}
 <select id="add" hidden></select>
 <button id="edit" hidden>Edit layout</button>
 <button id="sb">Settings</button>
-<button id="who" class="chip" hidden><i class="av"></i><span id="wn"></span></button></div></header>
+<span class="uw"><button id="who" class="chip" hidden aria-haspopup="menu" aria-expanded="false"><i class="av"></i><span id="wn"></span></button>
+<div id="um" class="menu sm" role="menu" hidden><p class="mute" style="margin:0">Signed in as <b id="umn"></b><br><span id="umr"></span></p><button id="umo" role="menuitem">Sign out</button></div></span></div></header>
 <dialog id="sd">
-<div id="sn"><button data-s="look">Appearance</button><button data-s="mon" data-r="3">Monitoring</button><button data-s="brand" data-r="3">Branding</button><button data-s="users" data-r="3">Users</button><button data-s="account" data-r="acct">Account</button><button data-s="about">About</button></div>
+<div id="sn"><button data-s="look">Appearance</button><button data-s="mon" data-r="3">Monitoring</button><button data-s="sec" data-r="3">Security</button><button data-s="brand" data-r="3">Branding</button><button data-s="users" data-r="3">Users</button><button data-s="account" data-r="acct">Account</button><button data-s="about">About</button></div>
 <div class="sbody"><button id="sx" class="close" aria-label="Close">✕</button>
 <section data-s="look"><h3>Appearance</h3>
 <label>Style <select id="style"><option value="honeycrisp">Honeycrisp</option><option value="pastel">Pastel</option><option value="stark">Stark</option></select></label>
@@ -235,6 +240,10 @@ dialog[open]::backdrop{animation:fade .25s}
 <div class="row"><label>Network checks every <input id="iv" type="number" min="5" max="3600"> s</label><button id="save" class="pri">Save</button></div>
 <div class="row"><label>Server pings every <input id="siv" type="number" min="5" max="3600"> s</label><button id="ssave" class="pri">Save</button></div>
 <span id="mmsg" class="mute"></span></section>
+<section data-s="sec" hidden><h3>Security</h3>
+<div class="row"><label>Sign out after <input id="idle" type="number" min="0" max="1440"> minutes of inactivity</label><button id="isave" class="pri">Save</button></div>
+<span id="imsg" class="mute"></span>
+<p class="mute">0 turns it off. Only mouse, keyboard and touch use counts as activity, not the page refreshing itself. Guests, and people who ticked "Keep me signed in", are never signed out this way.</p></section>
 <section data-s="brand" hidden><h3>Branding</h3>
 <label>Name <input id="b-name" maxlength="40"></label>
 <label>Browser tab title <input id="b-tab" maxlength="80" placeholder="Same as the name"></label>
@@ -269,7 +278,6 @@ const $ = s => document.querySelector(s);
 const COLS = 12, TABS = ["home", "network", "servers", "apps"], BANDS = ["2.4", "5", "6"];
 const NAMES = {network: "Network", servers: "Servers", apps: "Apps"};
 const LISTS = {network: "devices", servers: "servers", apps: "apps"};  // the scrollable list under each tab
-const FIELDS = {app: [["name", "Name"], ["url", "URL (https://…)"], ["icon", "Icon: blank = look up by name, or an emoji / image URL"]]};
 const SZ = {stat: [3, 2], chart: [4, 3], summary: [4, 3], list: [12, 8], app: [2, 2]};
 const CAT = {  // key: [menu group, label, tile type]
   "n.online": ["Network", "Devices online", "stat"], "n.clients": ["Network", "Clients", "stat"], "n.poe": ["Network", "PoE draw", "stat"],
@@ -293,6 +301,19 @@ const els = {}, lists = {};
 const tiles = () => ((D.tabs ||= {})[tab] ||= []);
 const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+// list sorting: [column, direction] per list, remembered per user in a cookie
+const SORT0 = () => ({devices: [0, 1], servers: [0, 1], apps: [0, 1]});
+let SORT = SORT0();
+const cookie = n => document.cookie.split("; ").find(r => r.startsWith(n + "="))?.slice(n.length + 1);
+const sortJar = () => { try { return JSON.parse(decodeURIComponent(cookie("beacon_sort") || "") || "{}"); } catch { return {}; } };
+const readSort = user => { const mine = sortJar()[user] || {}, s = SORT0(); for (const k in s) if (Array.isArray(mine[k]) && Number.isInteger(mine[k][0]) && (mine[k][1] === 1 || mine[k][1] === -1)) s[k] = mine[k]; return s; };
+const saveSort = () => { const jar = sortJar(); jar[ME.name] = SORT; document.cookie = `beacon_sort=${encodeURIComponent(JSON.stringify(jar))}; max-age=31536000; path=/; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`; };
+const cmp = (a, b, dir) => {  // blanks always last, numbers before text
+  if (a == null || b == null) return a == null ? (b == null ? 0 : 1) : -1;
+  if (typeof a !== typeof b) return typeof a === "number" ? -1 : 1;
+  return (typeof a === "string" ? a.localeCompare(b, undefined, {numeric: true}) : a - b) * dir;
+};
+const ipKey = h => /^\d+\.\d+\.\d+\.\d+$/.test(h) ? h.split(".").reduce((n, o) => n * 256 + +o, 0) : String(h).toLowerCase();
 const esc = t => String(t ?? "–").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
 const g = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const bps = b => b >= 1e6 ? (b / 1e6).toFixed(1) + " Mbps" : Math.round(b / 1e3) + " kbps";
@@ -303,7 +324,7 @@ const lab = ts => new Date(ts * 1000).toLocaleTimeString([], {hour: "2-digit", m
 async function api(method, url, body) {
   const r = await fetch(url, {method, headers: {"Content-Type": "application/json"}, body: body && JSON.stringify(body)});
   const j = await r.json().catch(() => ({}));
-  if (r.status === 401 && url !== "/api/login") splash("Please sign in to continue.");
+  if (r.status === 401 && url !== "/api/login") splash(j.expired ? "You were signed out after a period of inactivity." : "Please sign in to continue.");
   if (!r.ok) throw new Error(j.error || "Request failed");
   return j;
 }
@@ -426,6 +447,7 @@ function srvFacts(s) {
 // UniFi-style lists: one row per item, click a row for the details and graphs
 const LIST = {
   devices: {title: "Devices", add: "+ Add device", head: ["Name", "IP", "Clients", "Load"], items: () => DATA.devices,
+    key: (d, c) => { const l = d.series.at(-1), ok = l && !l.error; return [d.name.toLowerCase(), ipKey(d.host), ok ? l.clients ?? null : null, ok ? l.load ?? null : null][c]; },
     cells: d => { const l = d.series.at(-1), good = l && !l.error, info = [...d.series].reverse().find(x => x.model) || {};
       return {sub: info.model || "", ok: l ? !l.error : null, c: [d.host, good && l.clients != null ? l.clients : "–", good && l.load != null ? l.load : "–"]}; },
     html: `<div class="dev"><div class="f"></div><div class="ch"><canvas></canvas></div><div class="ch"><canvas></canvas></div></div>`,
@@ -437,6 +459,7 @@ const LIST = {
       if (r.charts) { upd(r.charts[0], lb, ok.map(x => x.cpu), ok.map(x => x.mem)); upd(r.charts[1], lb, ok.map(x => x.rx), ok.map(x => x.tx)); }
     }},
   servers: {title: "Servers", add: "+ Add server", head: ["Name", "IP", "Status", "Ping"], items: () => SERV.servers,
+    key: (s, c) => { const l = s.series.at(-1); return [s.name.toLowerCase(), ipKey(s.host), l ? (l.ms != null ? 0 : 1) : 2, l && l.ms != null ? l.ms : null][c]; },
     cells: s => { const l = s.series.at(-1);
       return {sub: s.type === "vm" ? "Virtual machine" : "Server", ok: l ? l.ms != null : null, c: [s.host, l ? (l.ms != null ? "Online" : "Offline") : "–", l && l.ms != null ? MS(l.ms) : "–"]}; },
     html: `<div class="dev two"><div class="f"></div><div class="ch"><canvas></canvas></div></div>`,
@@ -482,10 +505,12 @@ function mkRow(kind, key) {
 function renderList(kind) {
   const el = lists[kind];
   if (!el) return;
+  paintSort(kind);
   if (kind === "apps") return renderApps(el);
   const K = LIST[kind], src = K.items(), rows = el.rows ||= {}, box = el.querySelector(".items");
   for (const n in rows) if (!src.some(x => x.name === n)) { rows[n].charts?.forEach(c => c.destroy()); rows[n].li.remove(); delete rows[n]; }
-  src.forEach(x => {
+  const [col, dir] = SORT[kind], sorted = [...src].sort((a, b) => cmp(K.key(a, col), K.key(b, col), dir) || a.name.localeCompare(b.name));
+  sorted.forEach(x => {
     const r = rows[x.name] ||= mkRow(kind, x.name), c = K.cells(x), q = s => r.li.querySelector(s);
     if (r.li.parentNode !== box) box.append(r.li);
     q(".dot").className = "dot " + (c.ok === null ? "" : c.ok ? "up" : "down");
@@ -493,6 +518,8 @@ function renderList(kind) {
     c.c.forEach((v, i) => q(".c" + (i + 1)).textContent = v);
     if (r.open) K.fill(r, x);
   });
+  const sig = sorted.map(x => x.name).join("\0");  // reorder the rows only when the order really changed
+  if (el.sig !== sig) { sorted.forEach(x => box.append(rows[x.name].li)); el.sig = sig; }
   el.querySelector(".none2").hidden = src.length > 0;
 }
 
@@ -532,8 +559,9 @@ function mkAppRow(id) {
   return li;
 }
 function renderApps(el) {  // re-renders only when the apps change, so an open form isn't disturbed by refreshes
-  const ids = Object.keys(D.apps).sort((a, b) => D.apps[a].name.localeCompare(D.apps[b].name));
-  const sig = JSON.stringify([ids, D.apps, (D.tabs.home || []).map(t => t.ref)]);
+  const [col, dir] = SORT.apps, key = id => [D.apps[id].name.toLowerCase(), (D.apps[id].url || "").toLowerCase()][col] ?? "";
+  const ids = Object.keys(D.apps).sort((a, b) => cmp(key(a), key(b), dir) || D.apps[a].name.localeCompare(D.apps[b].name));
+  const sig = JSON.stringify([ids, D.apps, SORT.apps, (D.tabs.home || []).map(t => t.ref)]);
   if (el.sig === sig) return;
   el.sig = sig;
   const box = el.querySelector(".items"), rows = el.rows ||= {};
@@ -551,10 +579,23 @@ function renderApps(el) {  // re-renders only when the apps change, so an open f
   });
   el.querySelector(".none2").hidden = ids.length > 0;
 }
+function paintSort(kind) {
+  const [col, dir] = SORT[kind];
+  lists[kind]?.querySelectorAll(".lh .hs").forEach(b => {
+    const on = +b.dataset.c === col;
+    b.querySelector("i").textContent = on ? (dir > 0 ? " ▲" : " ▼") : "";
+    b.setAttribute("aria-sort", on ? (dir > 0 ? "ascending" : "descending") : "none");
+  });
+}
+function setSort(kind, c) {  // click a column header: sort by it, click again to flip
+  SORT[kind] = SORT[kind][0] === c ? [c, -SORT[kind][1]] : [c, 1];
+  saveSort(); renderList(kind);
+}
 function buildList(kind) {  // the scrollable panel under the tiles; not part of the grid
   const K = LIST[kind], el = document.createElement("section"), ed = kind === "apps";
   el.className = "tile list" + (ed ? " apps" : "");
-  el.innerHTML = `<div class="th"><span class="title">${K.title}</span><button class="add ${ed ? "edt" : "adm"}">${K.add}</button></div><div class="addfm"></div><div class="lh">${K.head.map(x => `<span>${x}</span>`).join("")}${ed ? "" : "<span></span>"}</div><div class="items"></div><p class="mute none2" style="padding:.9rem" hidden>Nothing here yet. Use ${K.add} to add one.</p>`;
+  el.innerHTML = `<div class="th"><span class="title">${K.title}</span><button class="add ${ed ? "edt" : "adm"}">${K.add}</button></div><div class="addfm"></div><div class="lh">${K.head.map((x, i) => x ? `<button class="hs" data-c="${i}">${x}<i></i></button>` : "<span></span>").join("")}${ed ? "" : "<span></span>"}</div><div class="items"></div><p class="mute none2" style="padding:.9rem" hidden>Nothing here yet. Use ${K.add} to add one.</p>`;
+  el.querySelector(".lh").onclick = e => { const b = e.target.closest(".hs"); if (b) setSort(kind, +b.dataset.c); };
   el.querySelector(".add").onclick = () => ed ? appForm(null, el.querySelector(".addfm")) : itemForm(kind, null, el.querySelector(".addfm"));
   return el;
 }
@@ -569,15 +610,28 @@ function build(t) {
     const sp = CHART[t.ref]();
     el.charts = [mk(el.body.querySelector("canvas"), sp.sets.map(([l, c]) => [l, g(c)]), sp.max, sp.fmt)];
   }
-  if (t.type === "app") el.body.innerHTML = `<a class="app" target="_blank" rel="noopener"><span class="ic"></span><b></b></a>`;
   el.querySelector(".th").onpointerdown = e => edit && !e.target.closest(".cf,.rm,.add") && drag(e, t, el, "move");
   el.querySelector(".rs").onpointerdown = e => drag(e, t, el, "size");
-  el.querySelector(".cf").onclick = () => openCfg(t, el);
+  el.querySelector(".cf").onclick = () => { el.picking = true; update(t, el); };
   el.querySelector(".rm").onclick = () => remove(t);
-  if (!FIELDS[t.type]) el.querySelector(".cf").hidden = true;
+  if (t.type !== "app") el.querySelector(".cf").hidden = true;
   return el;
 }
 
+const APPHTML = `<a class="app" target="_blank" rel="noopener"><span class="ic"></span><b></b></a>`;
+function pickApp(t, el) {  // an app tile with no app yet (or being changed) shows a menu of the apps on the Apps page
+  const ids = Object.keys(D.apps).sort((a, b) => D.apps[a].name.localeCompare(D.apps[b].name));
+  const sig = JSON.stringify([ids.map(i => [i, D.apps[i].name]), t.ref, !!el.picking]);
+  el.ttl.textContent = "App";
+  if (el.psig === sig) return;  // leave an open menu alone while data refreshes
+  el.psig = sig; el.ik = null;
+  el.body.innerHTML = ids.length
+    ? `<div class="pick"><select aria-label="App for this tile"><option value="">Choose an app…</option>${ids.map(i => `<option value="${esc(i)}"${i === t.ref ? " selected" : ""}>${esc(D.apps[i].name)}</option>`).join("")}</select>${el.picking ? '<button type="button" class="x">Cancel</button>' : ""}</div>`
+    : `<p class="mute">No apps yet. Add some on the <a href="#apps">Apps</a> page.</p>`;
+  const s = el.body.querySelector("select");
+  if (s) s.onchange = () => { if (!s.value) return; t.ref = s.value; el.picking = false; el.psig = null; save(); renderGrid(); };
+  el.body.querySelector(".x")?.addEventListener("click", () => { el.picking = false; el.psig = null; update(t, el); });
+}
 function update(t, el) {
   if (t.type === "stat") el.body.innerHTML = tot(t.ref, true), el.ttl.textContent = CAT[t.ref][1];
   else if (t.type === "summary") { el.ttl.textContent = NAMES[t.ref]; el.body.innerHTML = `<div class="sum">${SUMK[t.ref].map(k => tot(k)).join("")}</div>`; }
@@ -586,11 +640,14 @@ function update(t, el) {
     el.ttl.textContent = CAT[t.ref][1];
     upd(el.charts[0], sp.sets[0][2].map(p => lab(p.ts)), ...sp.sets.map(s => s[2].map(p => p.v)));
   } else if (t.type === "app") {
-    const a = D.apps[t.ref] || {}, l = el.body.firstChild, k = JSON.stringify(a);
-    el.ttl.textContent = l.children[1].textContent = a.name || "New app";
+    const a = D.apps[t.ref];
+    if (!a || el.picking) return pickApp(t, el);
+    if (!el.body.querySelector("a.app")) { el.body.innerHTML = APPHTML; el.ik = null; el.psig = null; }
+    const l = el.body.firstChild, k = JSON.stringify(a);
+    el.ttl.textContent = l.children[1].textContent = a.name;
     if (el.ik !== k) {
       el.ik = k;
-      if (/^https?:\/\//i.test(a.url || "")) l.href = a.url; else l.removeAttribute("href");
+      if (isUrl(a.url)) l.href = a.url; else l.removeAttribute("href");
       l.children[0].replaceWith(icon(a));
     }
   }
@@ -618,34 +675,15 @@ function renderGrid() {
 }
 
 // ---- in-place configuration (apps) ----
-function openCfg(t, el) {
-  const f = el.querySelector("form"), cur = D.apps[t.ref] || {};
-  f.innerHTML = FIELDS[t.type].map(([k, l]) => `<label>${l}<input name="${k}" value="${esc(cur[k] ?? "")}"></label>`).join("")
-    + `<div><button class="pri">Save</button> <button type="button" class="x">Cancel</button></div>`;
-  f.hidden = false;
-  f.onsubmit = e => {
-    e.preventDefault();
-    const v = Object.fromEntries(new FormData(f));
-    D.apps[t.ref] = {name: v.name.trim() || "App", url: v.url.trim(), icon: v.icon.trim()};
-    delete t.new; f.hidden = true; save(); fillAdd(); renderGrid();
-  };
-  f.querySelector(".x").onclick = () => { f.hidden = true; if (t.new) remove(t); };
-  f.elements[0].focus();
-}
 function remove(t) {
-  if (t.type === "app" && tab === "apps") {  // the Apps tab is the catalog: removing here removes it everywhere
-    if (!t.new && !confirm(`Remove ${D.apps[t.ref]?.name} from every tab?`)) return;
-    for (const k in D.tabs) D.tabs[k].filter(x => x.type === "app" && x.ref === t.ref).forEach(x => kill(k, x));
-    delete D.apps[t.ref];
-  } else kill(tab, t);
-  place(tiles()); save(); renderGrid(); fillAdd();
+  kill(tab, t); place(tiles()); save(); renderGrid(); fillAdd();
 }
 function fillAdd() {
   const list = tiles(), has = (ty, ref) => list.some(t => t.type === ty && t.ref === ref), groups = {};
   const add = (grp, v, l) => (groups[grp] ||= []).push([v, l]);
   for (const [k, [grp, label, ty]] of Object.entries(CAT)) if (!has(ty, k)) add(grp, `${ty}:${k}`, label);
   for (const r of ["network", "servers", "apps"]) if (!has("summary", r)) add("Overviews", `summary:${r}`, `${NAMES[r]} summary`);
-  for (const [id, a] of Object.entries(D.apps)) if (!has("app", id)) add("Apps", `app:${id}`, a.name);
+  add("Apps", "app:", "App");  // one entry; the tile then asks which app to show
   $("#add").innerHTML = `<option value="">+ Add tile</option>` + Object.entries(groups).map(([gr, o]) => `<optgroup label="${esc(gr)}">${o.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join("")}</optgroup>`).join("");
   $("#add").hidden = !edit || tab === "apps";
 }
@@ -653,9 +691,7 @@ $("#add").onchange = e => {
   const v = e.target.value, i = v.indexOf(":"), type = v.slice(0, i); e.target.value = "";
   if (!v) return;
   const n = {id: uid(), type, ref: v.slice(i + 1), x: 0, y: 99, w: SZ[type][0], h: SZ[type][1]};
-  if (type === "app" && n.ref === "new") { n.ref = uid(); n.new = true; }
   tiles().push(n); place(tiles()); renderGrid(); fillAdd(); save();
-  if (n.new) openCfg(n, els[tab + n.id]);
 };
 
 // ---- data ----
@@ -731,7 +767,7 @@ new ResizeObserver(() => movePill()).observe($("#tabs")); document.fonts?.ready.
 matchMedia("(prefers-color-scheme: dark)").onchange = () => { if ($("#theme").value === "auto") applyTheme(true); };
 
 // ---- branding, sign-in, settings ----
-let BR = {name: "Beacon", tab: "", tagline: "", logo: "", favicon: ""}, ME = null, GUEST = false, AUTHON = true, BRD = {};
+let BR = {name: "Beacon", tab: "", tagline: "", logo: "", favicon: ""}, ME = null, GUEST = false, AUTHON = true, BRD = {}, IDLE = 10, REM = false;
 const MARK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>`;
 const logoHtml = src => src ? `<img src="${esc(src)}" alt="">` : MARK;
 function applyBrand() {
@@ -754,7 +790,7 @@ function splash(msg) {  // the sign-in screen
   document.body.classList.add("splashing"); document.body.classList.remove("booting");
   $("#sd").close(); $("#splash").hidden = false;
   $("#lg").hidden = !GUEST; $("#lerr").textContent = msg || ""; $("#lu").focus();
-  api("GET", "/api/me").then(m => { GUEST = !!m.guest; $("#lg").hidden = !GUEST; }).catch(() => {});  // guest access may have been switched on since this page loaded
+  api("GET", "/api/me").then(m => { readMe(m); $("#lg").hidden = !GUEST; }).catch(() => {});  // guest access may have been switched on since this page loaded
 }
 function enter(u) {
   ME = u; $("#splash").hidden = true;
@@ -764,6 +800,7 @@ function enter(u) {
   if (edit && !can(2)) $("#edit").click();
   $("#who").hidden = !AUTHON; $("#who .av").textContent = u.name[0].toUpperCase();
   $("#wn").textContent = u.role === "guest" ? "Guest · Sign in" : u.name;
+  SORT = readSort(u.name); $("#um").hidden = true; lastAct = Date.now();
   start();
 }
 async function start() {
@@ -784,24 +821,46 @@ async function start() {
   load(); loadS();
 }
 const signOut = async () => { try { await api("POST", "/api/logout"); } catch {} splash(); };
+function readMe(m) { GUEST = !!m.guest; AUTHON = m.auth !== false; IDLE = m.idle ?? 10; REM = !!m.remember; }
+
+// inactivity: real use (mouse, keyboard, touch) is reported to the server now and then; the page itself polling does not count
+let lastAct = Date.now(), lastBeat = 0;
+["pointerdown", "keydown", "wheel", "touchstart", "mousemove"].forEach(ev => addEventListener(ev, () => { lastAct = Date.now(); }, {passive: true}));
+const signOutIdle = async () => { try { await api("POST", "/api/logout"); } catch {} splash("You were signed out after a period of inactivity."); };
+function idleCheck() {
+  if (!ME || ME.role === "guest" || !AUTHON) return;
+  const now = Date.now();
+  if (IDLE && !REM && now - lastAct > IDLE * 60000) return signOutIdle();
+  if (lastAct > lastBeat && now - lastBeat > 45000) { lastBeat = now; api("POST", "/api/activity").catch(() => {}); }
+}
+setInterval(idleCheck, 15000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) idleCheck(); });
 
 $("#lf").onsubmit = async e => {
   e.preventDefault();
   try {
     await api("POST", "/api/login", {name: $("#lu").value, password: $("#lp").value, remember: $("#lr").checked});
-    $("#lp").value = ""; enter((await api("GET", "/api/me")).user);
+    $("#lp").value = ""; const m = await api("GET", "/api/me"); readMe(m); enter(m.user);
   } catch (x) { $("#lerr").textContent = x.message; }
 };
 $("#lg").onclick = async () => {
-  try { await api("POST", "/api/login", {guest: true}); enter((await api("GET", "/api/me")).user); } catch (x) { $("#lerr").textContent = x.message; }
+  try { await api("POST", "/api/login", {guest: true}); const m = await api("GET", "/api/me"); readMe(m); enter(m.user); } catch (x) { $("#lerr").textContent = x.message; }
 };
-$("#who").onclick = () => ME.role === "guest" ? signOut() : openSettings("account");
+$("#who").onclick = () => {  // your name opens a small menu with Sign out; Settings stays its own button
+  if (ME.role === "guest") return signOut();
+  const m = $("#um"); m.hidden = !m.hidden; $("#who").setAttribute("aria-expanded", !m.hidden);
+  $("#umn").textContent = ME.name; $("#umr").textContent = ME.role;
+};
+$("#umo").onclick = () => { $("#um").hidden = true; signOut(); };
+document.addEventListener("click", e => { if (!$("#um").hidden && !e.target.closest(".uw")) $("#um").hidden = true; });
+document.addEventListener("keydown", e => { if (e.key === "Escape") $("#um").hidden = true; });
 $("#so").onclick = signOut;
 
 // settings dialog
 function showSec(s) {
   $("#sd").querySelectorAll("[data-s]").forEach(e => e.tagName === "SECTION" ? e.hidden = e.dataset.s !== s : e.setAttribute("aria-current", e.dataset.s === s));
   if (s === "users") loadUsers();
+  if (s === "sec") { $("#idle").value = IDLE; $("#imsg").textContent = ""; }
   if (s === "brand") fillBrand();
   if (s === "account") { $("#acn").textContent = ME.name; $("#acr").textContent = ME.role; }
 }
@@ -834,6 +893,7 @@ $("#uf").onsubmit = async e => {
   await uapi("POST", "", {name: $("#un").value, password: $("#up").value, role: $("#ur").value});
   if (!$("#uerr").textContent) $("#uf").reset();
 };
+$("#isave").onclick = () => api("POST", "/api/settings", {idle_minutes: +$("#idle").value}).then(r => { IDLE = r.idle_minutes; $("#imsg").textContent = "Saved."; }).catch(x => { $("#imsg").textContent = x.message; });
 $("#guestOn").onchange = e => api("POST", "/api/settings", {guest: e.target.checked}).then(() => { GUEST = e.target.checked; }).catch(x => $("#uerr").textContent = x.message);
 $("#pf").onsubmit = async e => {
   e.preventDefault();
@@ -870,7 +930,7 @@ $("#bsave").onclick = async () => {
   applyBrand();
   let m = {};
   try { m = await api("GET", "/api/me"); } catch {}
-  GUEST = !!m.guest; AUTHON = m.auth !== false;
+  readMe(m);
   if (m.user) enter(m.user); else splash();
 })();
 </script></body></html>
