@@ -1,3 +1,7 @@
+v0.4.1 (2026-10-20)
+-GitHub issue submission right from within the app.
+-Fill out the form in Beacon, and it takes you to issue submission with everything pre-filled to be checked by the user.
+
 v0.4.0 (2026-10-20)
 -Logins now timeout after 10 minutes. Configurable in settings.
 -Device lists are now sortable by clicking the headers.
