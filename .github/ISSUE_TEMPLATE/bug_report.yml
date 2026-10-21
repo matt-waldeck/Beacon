@@ -1,0 +1,33 @@
+name: Bug report
+description: Something in Beacon isn't working as it should
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. The more detail you can give, the faster it can be fixed.
+        This page is public, so please **don't paste passwords, tokens, or internal IP addresses and hostnames**.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the problem. Screenshots are welcome, just drag them into this box.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to ...
+        2. Click ...
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Filled in for you if you used Beacon's Feedback page and ticked the diagnostics box.
+      render: text
