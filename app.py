@@ -7,7 +7,8 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 
 DATA = os.environ.get("DATA_DIR", "/data")
-VERSION = "0.4.0"
+VERSION = "0.4.1"
+DEFAULT_REPO = os.environ.get("GITHUB_REPO") or "matt-waldeck/beacon"  # where the Feedback page sends people
 CFG, SET, DB, DEV, SRV = (os.path.join(DATA, n) for n in ("config.json", "settings.json", "stats.db", "devices.json", "servers.json"))
 # Read-only /proc reads work on every UniFi device; mca-dump adds model/firmware/client count where present.
 CMD = "for f in uptime loadavg meminfo stat net/dev; do echo @@$f; cat /proc/$f; done; echo @@mca; mca-dump 2>/dev/null"
@@ -56,7 +57,7 @@ def conf():
             s = json.load(f)
     except Exception:
         s = {}
-    return {"interval": s.get("interval", cfg().get("interval", 30)), "server_interval": s.get("server_interval", 15), "guest": bool(s.get("guest", False)), "idle_minutes": int(s.get("idle_minutes", 10))}
+    return {"interval": s.get("interval", cfg().get("interval", 30)), "server_interval": s.get("server_interval", 15), "guest": bool(s.get("guest", False)), "idle_minutes": int(s.get("idle_minutes", 10)), "repo": str(s.get("repo", ""))}
 
 
 def interval():
@@ -181,11 +182,16 @@ def set_settings():
         s["guest"] = bool(j["guest"])
     if "idle_minutes" in j:
         s["idle_minutes"] = max(0, min(1440, int(j["idle_minutes"])))  # 0 = never sign out
+    if "repo" in j:  # the GitHub repository the Feedback page opens issues on; blank = the default
+        r = str(j["repo"]).strip()
+        if r and not re.fullmatch(r"[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}", r):
+            return bad("Use the form owner/name, for example matt-waldeck/beacon.")
+        s["repo"] = r
     with open(SET, "w") as f:
         json.dump(s, f)
     wake.set()
     swake.set()
-    return jsonify(s)
+    return jsonify({**s, "repo": s["repo"] or DEFAULT_REPO})
 
 
 HOST = re.compile(r"^[A-Za-z0-9][A-Za-z0-9.:-]{0,251}$")
@@ -446,7 +452,7 @@ def servers_data():
 
 @app.get("/api/me")
 def me():
-    return jsonify(user=who(), guest=conf()["guest"], auth=not AUTH_OFF, version=VERSION, idle=conf()["idle_minutes"], remember=bool(session.get("r")))
+    return jsonify(user=who(), guest=conf()["guest"], auth=not AUTH_OFF, version=VERSION, idle=conf()["idle_minutes"], remember=bool(session.get("r")), repo=conf()["repo"] or DEFAULT_REPO)
 
 
 @app.post("/api/login")

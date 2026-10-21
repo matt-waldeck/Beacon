@@ -190,6 +190,10 @@ dialog[open]::backdrop{animation:fade .25s}
 .tile.list .lh .hs:hover{color:var(--ink)}.lh .hs i{font-style:normal;color:var(--blue)}
 .uw{position:relative}.menu.sm{width:13rem}
 .pick{display:grid;gap:.5rem;align-content:center;height:100%}.pick select{width:100%}
+textarea{font:inherit;padding:.5rem .65rem;border:1px solid var(--rule);border-radius:calc(var(--r) / 2);background:var(--field);color:var(--ink);width:100%;min-height:7rem;resize:vertical}
+.sbody label.col{display:grid;gap:.3rem;justify-content:stretch;grid-template-columns:minmax(0,1fr)}#fb-title{width:100%}
+.sbody a,.pick a{color:var(--blue)}
+#fb-pre{white-space:pre-wrap;font-size:.8rem;margin:0;padding:.6rem;border:1px solid var(--rule);border-radius:calc(var(--r) / 2);background:color-mix(in srgb,var(--mute) 10%,transparent);color:var(--mute)}
 [data-style=stark] body{background:radial-gradient(900px 500px at 15% -5%,rgba(25,211,255,.13),transparent),repeating-linear-gradient(0deg,rgba(25,211,255,.04) 0 1px,transparent 1px 36px),repeating-linear-gradient(90deg,rgba(25,211,255,.04) 0 1px,transparent 1px 36px),var(--paper);background-attachment:fixed}
 [data-style=stark] h1{text-transform:uppercase;letter-spacing:.3em;font-size:1rem;color:var(--blue);text-shadow:0 0 10px var(--blue)}
 [data-style=stark] .logo{filter:drop-shadow(0 0 6px var(--blue))}
@@ -226,7 +230,7 @@ dialog[open]::backdrop{animation:fade .25s}
 <span class="uw"><button id="who" class="chip" hidden aria-haspopup="menu" aria-expanded="false"><i class="av"></i><span id="wn"></span></button>
 <div id="um" class="menu sm" role="menu" hidden><p class="mute" style="margin:0">Signed in as <b id="umn"></b><br><span id="umr"></span></p><button id="umo" role="menuitem">Sign out</button></div></span></div></header>
 <dialog id="sd">
-<div id="sn"><button data-s="look">Appearance</button><button data-s="mon" data-r="3">Monitoring</button><button data-s="sec" data-r="3">Security</button><button data-s="brand" data-r="3">Branding</button><button data-s="users" data-r="3">Users</button><button data-s="account" data-r="acct">Account</button><button data-s="about">About</button></div>
+<div id="sn"><button data-s="look">Appearance</button><button data-s="mon" data-r="3">Monitoring</button><button data-s="sec" data-r="3">Security</button><button data-s="brand" data-r="3">Branding</button><button data-s="users" data-r="3">Users</button><button data-s="account" data-r="acct">Account</button><button data-s="fb" data-r="ng">Feedback</button><button data-s="about">About</button></div>
 <div class="sbody"><button id="sx" class="close" aria-label="Close">✕</button>
 <section data-s="look"><h3>Appearance</h3>
 <label>Style <select id="style"><option value="honeycrisp">Honeycrisp</option><option value="pastel">Pastel</option><option value="stark">Stark</option></select></label>
@@ -262,6 +266,17 @@ dialog[open]::backdrop{animation:fade .25s}
 <form id="pf" class="row2"><input id="pc" type="password" placeholder="Current password" required autocomplete="current-password"><input id="pn" type="password" placeholder="New password (8+ characters)" required minlength="8" autocomplete="new-password"><button class="pri">Change password</button></form>
 <span id="perr" class="mute"></span>
 <div><button id="so">Sign out</button></div></section>
+<section data-s="fb" hidden><h3>Feedback</h3>
+<p class="mute" style="margin:0">Found a bug or have an idea? This opens a ready-filled issue on GitHub for you to look over and send. You'll need a GitHub account.</p>
+<label>Type <select id="fb-type"><option value="bug">Bug report</option><option value="feature">Feature request</option></select></label>
+<label>Title <input id="fb-title" maxlength="120" placeholder="A short summary"></label>
+<label class="col"><span id="fb-bl">What happened?</span><textarea id="fb-body" rows="5"></textarea></label>
+<label class="chk"><input type="checkbox" id="fb-diag"> Include diagnostics (Beacon version, browser, screen size and style)</label>
+<pre id="fb-pre" hidden></pre>
+<div class="row"><a id="fb-search" target="_blank" rel="noopener">Search existing issues</a><button id="fb-go" class="pri">Open on GitHub</button></div>
+<span id="fb-msg" class="mute"></span>
+<div class="row adm"><label>GitHub repository <input id="fb-repo" placeholder="owner/name"></label><button id="fb-save">Save</button></div>
+<p class="mute adm" style="margin:0">Needs the issue forms from .github/ISSUE_TEMPLATE in that repository. Diagnostics never include IP addresses, hostnames, device names or logs.</p></section>
 <section data-s="about" hidden><h3>About</h3><p><b class="bn">Beacon</b> <span id="ver"></span></p><p class="mute">Your data lives in the /data folder of the container.</p></section>
 </div></dialog>
 <div id="splash" hidden><form id="lf" class="tile card"><span class="bl logo big"></span><h2 class="bn">Beacon</h2><p id="tag" class="mute"></p>
@@ -767,7 +782,7 @@ new ResizeObserver(() => movePill()).observe($("#tabs")); document.fonts?.ready.
 matchMedia("(prefers-color-scheme: dark)").onchange = () => { if ($("#theme").value === "auto") applyTheme(true); };
 
 // ---- branding, sign-in, settings ----
-let BR = {name: "Beacon", tab: "", tagline: "", logo: "", favicon: ""}, ME = null, GUEST = false, AUTHON = true, BRD = {}, IDLE = 10, REM = false;
+let BR = {name: "Beacon", tab: "", tagline: "", logo: "", favicon: ""}, ME = null, GUEST = false, AUTHON = true, BRD = {}, IDLE = 10, REM = false, REPO = "matt-waldeck/beacon";
 const MARK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>`;
 const logoHtml = src => src ? `<img src="${esc(src)}" alt="">` : MARK;
 function applyBrand() {
@@ -821,7 +836,7 @@ async function start() {
   load(); loadS();
 }
 const signOut = async () => { try { await api("POST", "/api/logout"); } catch {} splash(); };
-function readMe(m) { GUEST = !!m.guest; AUTHON = m.auth !== false; IDLE = m.idle ?? 10; REM = !!m.remember; }
+function readMe(m) { GUEST = !!m.guest; AUTHON = m.auth !== false; IDLE = m.idle ?? 10; REM = !!m.remember; REPO = m.repo || REPO; }
 
 // inactivity: real use (mouse, keyboard, touch) is reported to the server now and then; the page itself polling does not count
 let lastAct = Date.now(), lastBeat = 0;
@@ -860,12 +875,13 @@ $("#so").onclick = signOut;
 function showSec(s) {
   $("#sd").querySelectorAll("[data-s]").forEach(e => e.tagName === "SECTION" ? e.hidden = e.dataset.s !== s : e.setAttribute("aria-current", e.dataset.s === s));
   if (s === "users") loadUsers();
+  if (s === "fb") fbInit();
   if (s === "sec") { $("#idle").value = IDLE; $("#imsg").textContent = ""; }
   if (s === "brand") fillBrand();
   if (s === "account") { $("#acn").textContent = ME.name; $("#acr").textContent = ME.role; }
 }
 function openSettings(s = "look") {
-  $("#sn").querySelectorAll("button").forEach(b => b.hidden = b.dataset.r === "3" ? !can(3) : b.dataset.r === "acct" ? !ME || ME.role === "guest" || !AUTHON : false);
+  $("#sn").querySelectorAll("button").forEach(b => b.hidden = b.dataset.r === "3" ? !can(3) : b.dataset.r === "acct" ? !ME || ME.role === "guest" || !AUTHON : b.dataset.r === "ng" ? !ME || ME.role === "guest" : false);
   showSec($("#sn button[data-s=" + s + "]").hidden ? "look" : s); $("#sd").showModal();
 }
 $("#sb").onclick = () => openSettings();
@@ -924,6 +940,33 @@ $("#bsave").onclick = async () => {
     applyBrand(); $("#bmsg").textContent = "Saved.";
   } catch (x) { $("#bmsg").textContent = x.message; }
 };
+
+// feedback: opens a ready-filled new issue on GitHub (the repository's issue forms are filled by field id)
+const FB = {bug: {template: "bug_report.yml", field: "what-happened", label: "What happened?"}, feature: {template: "feature_request.yml", field: "idea", label: "What would you like to see?"}};
+function diagnostics() {  // deliberately small: nothing about your network
+  const r = document.documentElement.dataset;
+  return [`Beacon version: ${$("#ver").textContent.replace("Version ", "")}`, `Browser: ${navigator.userAgent}`, `Screen: ${innerWidth}×${innerHeight}`, `Style: ${r.style || "honeycrisp"}, ${r.theme || "auto"}, hover ${r.hover || "none"}`].join("\n");
+}
+function feedbackUrl() {
+  const F = FB[$("#fb-type").value], p = new URLSearchParams();
+  p.set("template", F.template); p.set("title", $("#fb-title").value.trim()); p.set(F.field, $("#fb-body").value.trim());
+  if ($("#fb-diag").checked) p.set("diagnostics", diagnostics());
+  return `https://github.com/${REPO}/issues/new?${p}`;
+}
+function fbInit() {
+  $("#fb-bl").textContent = FB[$("#fb-type").value].label; $("#fb-repo").value = REPO;
+  $("#fb-pre").hidden = !$("#fb-diag").checked; $("#fb-pre").textContent = diagnostics();
+  $("#fb-search").href = `https://github.com/${REPO}/issues?q=${encodeURIComponent("is:issue " + $("#fb-title").value.trim())}`;
+}
+$("#fb-type").onchange = $("#fb-diag").onchange = fbInit; $("#fb-title").oninput = fbInit;
+$("#fb-go").onclick = () => {
+  const msg = $("#fb-msg");
+  if ($("#fb-title").value.trim().length < 3) { msg.textContent = "Add a short title first."; return; }
+  const url = feedbackUrl();
+  if (url.length > 7000) { msg.textContent = "That's too long for a link. Shorten it; you can add more on GitHub."; return; }
+  window.open(url, "_blank", "noopener"); msg.textContent = "Opened on GitHub. Look it over and press Submit there.";
+};
+$("#fb-save").onclick = () => api("POST", "/api/settings", {repo: $("#fb-repo").value.trim()}).then(r => { REPO = r.repo; fbInit(); $("#fb-msg").textContent = "Repository saved."; }).catch(x => { $("#fb-msg").textContent = x.message; });
 
 (async function boot() {
   try { BR = await api("GET", "/api/brand"); } catch {}
