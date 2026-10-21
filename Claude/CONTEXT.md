@@ -1,4 +1,4 @@
-# Beacon — project context (v0.4.0)
+# Beacon — project context (v0.4.1)
 
 Beacon is a dead-simple, Grafana-style monitoring dashboard for homelabs: drag-and-drop grid, every tile configurable in place, built on data already collected. Reference points the author found too heavy or too light: CheckMK, Beszel, Uptime Kuma, Netdata.
 
@@ -13,6 +13,9 @@ Beacon is a dead-simple, Grafana-style monitoring dashboard for homelabs: drag-a
 - Inactivity: sessions end after `idle_minutes` (default 10, Settings > Security, 0 = never) without real use. The page reports mouse/keyboard/touch with `POST /api/activity`; background polling (`GET /api/data`, `/api/servers`) does not count. Guests and "keep me signed in" sessions (`session["r"]`) are exempt. Expired requests get `401` with `expired: true`.
 - Open routes: `/`, `/healthz`, `GET /api/me`, `GET /api/brand`, `POST /api/login`. Everything else needs a session; `PUT /api/dash` needs user+, other writes need admin. 5 failed sign-ins per 5 minutes per client IP locks that IP out.
 - Env: `UI_USER` (default admin) and `UI_PASSWORD` (always resets that user's password at start, creates the admin if missing); with neither, a random admin password is printed once in the log. `UI_AUTH=off` removes sign-in entirely (proxy-side auth). `TRUST_PROXY=1` reads the client IP from X-Forwarded-For. `COOKIE_SECURE=1` over HTTPS (switches accept 1/true/yes/on). Responses carry CSP and nosniff headers.
+
+## Feedback
+Settings > Feedback (any signed-in role, not guests) builds a prefilled GitHub new-issue link and opens it in a new tab for the person to review and submit; nothing is sent from the server and no token is stored. The repository is `matt-waldeck/beacon` by default, overridable with `GITHUB_REPO` or by an admin in the Feedback page (`repo` in settings.json). The link uses `template=bug_report.yml|feature_request.yml`, `title`, and the forms' field ids (`what-happened`, `idea`, `diagnostics`); the forms live in `.github/ISSUE_TEMPLATE/` and must be committed to that repository. Diagnostics are opt-in and limited to version, browser, screen size and style. Planned upgrade: in-app submission through a GitHub App with device flow.
 
 ## Branding
 `brand.json`: name, tab title, sign-in message, logo and favicon (stored as data URIs, validated server-side, 500 KB max). Edited in Settings > Branding; public read so the sign-in screen can use it.
