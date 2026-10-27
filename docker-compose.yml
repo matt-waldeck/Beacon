@@ -1,7 +1,7 @@
 services:
   beacon:
     build: .
-    image: beacon:0.4.1
+    image: beacon:1.0.0-rc1
     container_name: beacon
     restart: unless-stopped
     cap_add: [NET_RAW]  # lets the container send pings
@@ -14,6 +14,9 @@ services:
       TRUST_PROXY: ${TRUST_PROXY:-}  # 1 behind a reverse proxy, so lockouts use the real client IP
       COOKIE_SECURE: ${COOKIE_SECURE:-}  # 1 when Beacon is served over HTTPS
       GITHUB_REPO: ${GITHUB_REPO:-}  # where the Feedback page opens issues (default matt-waldeck/beacon)
+      HEIMDALL_SOURCE: ${HEIMDALL_SOURCE:-}  # app-icon sources; only set these to point at your own mirrors
+      DASHBOARD_ICONS_SOURCE: ${DASHBOARD_ICONS_SOURCE:-}
+      SELFHST_ICONS_SOURCE: ${SELFHST_ICONS_SOURCE:-}
       SSH_USER: ${SSH_USER:-}  # shared SSH login for every device, also set in .env
       SSH_PASSWORD: ${SSH_PASSWORD:-}
       SSH_KEY_FILE: ${SSH_KEY_FILE:-}

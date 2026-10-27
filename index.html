@@ -194,6 +194,9 @@ textarea{font:inherit;padding:.5rem .65rem;border:1px solid var(--rule);border-r
 .sbody label.col{display:grid;gap:.3rem;justify-content:stretch;grid-template-columns:minmax(0,1fr)}#fb-title{width:100%}
 .sbody a,.pick a{color:var(--blue)}
 #fb-pre{white-space:pre-wrap;font-size:.8rem;margin:0;padding:.6rem;border:1px solid var(--rule);border-radius:calc(var(--r) / 2);background:color-mix(in srgb,var(--mute) 10%,transparent);color:var(--mute)}
+.lr .nm{overflow:visible}.nm b,.nm small{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ar .nm{align-items:center}.ar .c1{align-self:center}
+.pv{display:inline-flex;align-items:center;min-width:1.6rem}.ih{flex-basis:100%;font-size:.85rem}
 [data-style=stark] body{background:radial-gradient(900px 500px at 15% -5%,rgba(25,211,255,.13),transparent),repeating-linear-gradient(0deg,rgba(25,211,255,.04) 0 1px,transparent 1px 36px),repeating-linear-gradient(90deg,rgba(25,211,255,.04) 0 1px,transparent 1px 36px),var(--paper);background-attachment:fixed}
 [data-style=stark] h1{text-transform:uppercase;letter-spacing:.3em;font-size:1rem;color:var(--blue);text-shadow:0 0 10px var(--blue)}
 [data-style=stark] .logo{filter:drop-shadow(0 0 6px var(--blue))}
@@ -287,9 +290,44 @@ textarea{font:inherit;padding:.5rem .65rem;border:1px solid var(--rule);border-r
 <div id="grid"></div>
 <div id="lpanel"></div>
 </main>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="/vendor/chart.umd.min.js"></script>
+<script>window.Chart || document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"><\/script>')</script>
 <script>
 const $ = s => document.querySelector(s);
+class MiniChart {  // only used if Chart.js can't be loaded (for example a failed image build with no internet): plain lines, no hover
+  constructor(el, cfg) { this.el = el; this.data = cfg.data; this.fmt = cfg.options.scales.y.ticks.callback; this.max = cfg.options.scales.y.max; this.update(); }
+  update() {
+    const c = this.el, p = c.parentElement, w = p.clientWidth, h = p.clientHeight, r = devicePixelRatio || 1;
+    if (!w || !h) return;
+    c.width = w * r; c.height = h * r; c.style.width = w + "px"; c.style.height = h + "px";
+    const x = c.getContext("2d"), L = 46, T = 20, B = 6, R = 6, css = getComputedStyle(document.documentElement);
+    const vals = this.data.datasets.flatMap(s => s.data).filter(v => v != null && !isNaN(v)), max = this.max ?? (Math.max(0, ...vals) || 1);
+    x.scale(r, r); x.clearRect(0, 0, w, h); x.font = "11px " + css.getPropertyValue("--font"); x.textBaseline = "middle";
+    for (let i = 0; i <= 3; i++) {
+      const y = T + (h - T - B) * (1 - i / 3);
+      x.strokeStyle = css.getPropertyValue("--grid"); x.beginPath(); x.moveTo(L, y); x.lineTo(w - R, y); x.stroke();
+      x.fillStyle = css.getPropertyValue("--mute"); x.fillText(this.fmt(max * i / 3), 2, y);
+    }
+    this.data.datasets.forEach((s, k) => {
+      x.strokeStyle = s.borderColor; x.lineWidth = 1.5; x.beginPath(); let pen = false;
+      s.data.forEach((v, i) => {
+        if (v == null) { pen = false; return; }
+        const px = L + (w - L - R) * (s.data.length < 2 ? 0 : i / (s.data.length - 1)), py = T + (h - T - B) * (1 - Math.min(v, max) / max);
+        pen ? x.lineTo(px, py) : x.moveTo(px, py); pen = true;
+      });
+      x.stroke(); x.fillStyle = s.borderColor; x.fillText(s.label, L + k * 90, 8);
+    });
+  }
+  destroy() {}
+}
+MiniChart.defaults = {font: {}};
+if (!window.Chart) window.Chart = MiniChart;
+const noteT = new WeakMap();
+function note(sel, text, ms = 5000) {  // a status message that fades away by itself
+  const e = typeof sel === "string" ? $(sel) : sel;
+  e.textContent = text; clearTimeout(noteT.get(e));
+  if (text) noteT.set(e, setTimeout(() => { e.textContent = ""; }, ms));
+}
 const COLS = 12, TABS = ["home", "network", "servers", "apps"], BANDS = ["2.4", "5", "6"];
 const NAMES = {network: "Network", servers: "Servers", apps: "Apps"};
 const LISTS = {network: "devices", servers: "servers", apps: "apps"};  // the scrollable list under each tab
@@ -339,12 +377,12 @@ const lab = ts => new Date(ts * 1000).toLocaleTimeString([], {hour: "2-digit", m
 async function api(method, url, body) {
   const r = await fetch(url, {method, headers: {"Content-Type": "application/json"}, body: body && JSON.stringify(body)});
   const j = await r.json().catch(() => ({}));
-  if (r.status === 401 && url !== "/api/login") splash(j.expired ? "You were signed out after a period of inactivity." : "Please sign in to continue.");
+  if (r.status === 401 && ME && url !== "/api/login") splash(j.expired ? "You were signed out after a period of inactivity." : "Please sign in to continue.");
   if (!r.ok) throw new Error(j.error || "Request failed");
   return j;
 }
 const clean = () => ({v: D.v, apps: D.apps, tabs: Object.fromEntries(Object.entries(D.tabs).map(([k, v]) => [k, v.filter(t => !t.new)]))});
-const save = () => { clearTimeout(st); st = setTimeout(() => api("PUT", "/api/dash", clean()).catch(() => {}), 300); };
+const save = () => { clearTimeout(st); st = setTimeout(() => api("PUT", "/api/dash", clean()).catch(e => { if (ME && can(2)) note("#stamp", "Couldn't save your changes: " + e.message, 8000); }), 300); };
 
 // ---- grid: 12 columns, tiles fall upward until they rest on another tile ----
 const hit = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
@@ -430,16 +468,26 @@ const mk = (el, sets, max, fmt) => new Chart(el, {type: "line",
 const upd = (c, labels, ...sets) => { c.data.labels = labels; sets.forEach((s, i) => c.data.datasets[i].data = s); c.update(); };
 
 const slug = n => n.toLowerCase().trim().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-function icon(a) {  // emoji as-is, URL as image, blank = look the app up by name (Dashboard Icons, then selfh.st), else its first letter
-  const span = document.createElement("span"), ic = (a.icon || "").trim(), s = slug(a.name || "");
+function icon(a) {  // emoji as-is, an image address as an image; blank = Beacon looks the app up by name (Heimdall's list, Dashboard Icons, selfh.st) and keeps a copy
+  const span = document.createElement("span"), ic = (a.icon || "").trim(), nm = (a.name || "").trim(), s = slug(nm);
   span.className = "ic";
-  const letter = () => { span.textContent = (a.name || "?")[0]; };
+  const letter = () => { span.textContent = (nm || "?")[0]; };
   if (ic && !/^https?:\/\//i.test(ic)) { span.textContent = ic; return span; }
-  const c = ic ? [ic] : s ? [`https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/${s}.svg`, `https://cdn.jsdelivr.net/gh/selfhst/icons/png/${s}.png`] : [];
+  const own = `/api/icon?name=${encodeURIComponent(nm)}`;
+  const c = ic ? [ic] : nm ? [own, ...(s ? [`https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/${s}.svg`, `https://cdn.jsdelivr.net/gh/selfhst/icons/png/${s}.png`] : [])] : [];
   if (!c.length) { letter(); return span; }
   const img = new Image(); let i = 0;
   img.alt = ""; img.src = c[0];
-  img.onerror = () => ++i < c.length ? (img.src = c[i]) : (img.remove(), letter());
+  img.onerror = () => {
+    if (++i < c.length) { img.src = c[i]; return; }
+    img.remove(); letter();
+    if (!ic && nm) setTimeout(() => {  // Beacon may have found it in the meantime
+      if (!span.isConnected || span.querySelector("img")) return;
+      const again = new Image(); again.alt = "";
+      again.onload = () => { span.textContent = ""; span.append(again); };
+      again.src = own + "&r=1";
+    }, 8000);
+  };
   span.append(img); return span;
 }
 
@@ -543,7 +591,7 @@ LIST.apps = {title: "Apps", add: "+ Add app", head: ["Name", "URL", ""]};
 const isUrl = u => /^https?:\/\//i.test(u || "");
 function appForm(id, mount) {
   const a = D.apps[id] || {}, ld = mount.closest(".ld");
-  mount.innerHTML = `<form class="fm2"><input name="name" placeholder="Name" required maxlength="60" value="${esc(a.name ?? "")}"><input name="url" placeholder="https://…" value="${esc(a.url ?? "")}"><input name="icon" placeholder="Icon: blank = look up by name, or emoji / image URL" value="${esc(a.icon ?? "")}"><button class="pri">${id ? "Save" : "Add"}</button><button type="button" class="x">Cancel</button></form>`;
+  mount.innerHTML = `<form class="fm2"><input name="name" placeholder="Name" required maxlength="60" value="${esc(a.name ?? "")}"><input name="url" placeholder="https://…" value="${esc(a.url ?? "")}"><input name="icon" placeholder="Icon: blank = look up by name, or emoji / image URL" value="${esc(a.icon ?? "")}"><button class="pri">${id ? "Save" : "Add"}</button><button type="button" class="x">Cancel</button><span class="pv"></span><span class="mute ih"></span></form>`;
   const f = mount.firstChild, close = () => { mount.innerHTML = ""; if (ld) ld.hidden = true; };
   f.onsubmit = e => {
     e.preventDefault();
@@ -552,6 +600,25 @@ function appForm(id, mount) {
     close(); save(); fillAdd(); renderList("apps");
   };
   f.querySelector(".x").onclick = close;
+  let timer0;  // shows the icon as you type, and says where it came from (or why it wasn't found)
+  const pv = f.querySelector(".pv"), ih = f.querySelector(".ih");
+  const preview = () => {
+    clearTimeout(timer0);
+    timer0 = setTimeout(async () => {
+      const name = f.elements.name.value.trim(), ic = f.elements.icon.value.trim();
+      if (!name && !ic) { pv.replaceChildren(); ih.textContent = ""; return; }
+      ih.textContent = "";
+      if (!ic) {
+        ih.textContent = "Looking for an icon…";
+        try {
+          const r = await api("POST", "/api/icon/resolve", {name});
+          ih.textContent = r.found ? `Icon found (${r.source}).` : r.why === "network" ? "Beacon couldn't reach the icon sources (no internet on the server?). Paste an image address or an emoji instead." : r.why === "busy" ? "Still looking, try again in a moment." : "No icon found for that name. Paste an image address or an emoji instead.";
+        } catch { /* signed out or not allowed */ }
+      }
+      const e = icon({name, icon: ic}); e.classList.add("sm"); pv.replaceChildren(e);
+    }, 600);
+  };
+  f.elements.name.addEventListener("input", preview); f.elements.icon.addEventListener("input", preview); if (id) preview();
   f.elements[0].focus();
 }
 function removeApp(id) {
@@ -609,7 +676,7 @@ function setSort(kind, c) {  // click a column header: sort by it, click again t
 function buildList(kind) {  // the scrollable panel under the tiles; not part of the grid
   const K = LIST[kind], el = document.createElement("section"), ed = kind === "apps";
   el.className = "tile list" + (ed ? " apps" : "");
-  el.innerHTML = `<div class="th"><span class="title">${K.title}</span><button class="add ${ed ? "edt" : "adm"}">${K.add}</button></div><div class="addfm"></div><div class="lh">${K.head.map((x, i) => x ? `<button class="hs" data-c="${i}">${x}<i></i></button>` : "<span></span>").join("")}${ed ? "" : "<span></span>"}</div><div class="items"></div><p class="mute none2" style="padding:.9rem" hidden>Nothing here yet. Use ${K.add} to add one.</p>`;
+  el.innerHTML = `<div class="th"><span class="title">${K.title}</span><button class="add ${ed ? "edt" : "adm"}">${K.add}</button></div><div class="addfm"></div><div class="lh">${K.head.map((x, i) => x ? `<button class="hs" data-c="${i}">${x}<i></i></button>` : "<span></span>").join("")}${ed ? "" : "<span></span>"}</div><div class="items"></div><p class="mute none2" style="padding:.9rem" hidden>Nothing here yet.<span class="${ed ? "edt" : "adm"}"> Use ${K.add} to add one.</span></p>`;
   el.querySelector(".lh").onclick = e => { const b = e.target.closest(".hs"); if (b) setSort(kind, +b.dataset.c); };
   el.querySelector(".add").onclick = () => ed ? appForm(null, el.querySelector(".addfm")) : itemForm(kind, null, el.querySelector(".addfm"));
   return el;
@@ -769,7 +836,7 @@ $("#edit").onclick = () => {
   edit = !edit; document.body.classList.toggle("editing", edit);
   $("#edit").textContent = edit ? "Done" : "Edit layout"; $("#edit").classList.toggle("pri", edit); fillAdd();
 };
-const setIv = (id, key) => () => api("POST", "/api/settings", {[key]: +$(id).value}).then(() => { $("#mmsg").textContent = "Saved."; refresh(); }).catch(x => { $("#mmsg").textContent = x.message; });
+const setIv = (id, key) => () => api("POST", "/api/settings", {[key]: +$(id).value}).then(() => { note("#mmsg", "Saved."); refresh(); }).catch(x => { note("#mmsg", x.message); });
 $("#save").onclick = setIv("#iv", "interval");
 $("#ssave").onclick = setIv("#siv", "server_interval");
 $("#range").onchange = refresh;
@@ -818,12 +885,25 @@ function enter(u) {
   SORT = readSort(u.name); $("#um").hidden = true; lastAct = Date.now();
   start();
 }
+function sane() {  // a hand-edited or damaged layout is cleaned up rather than allowed to break the page
+  const good = t => t && typeof t === "object" && (t.type === "app" || (t.type === "stat" && STAT[t.ref]) || (t.type === "chart" && CHART[t.ref]) || (t.type === "summary" && SUMK[t.ref]));
+  const num = (v, lo, hi, d) => Number.isFinite(+v) ? Math.max(lo, Math.min(hi, Math.round(+v))) : d, seen = new Set();
+  for (const k of TABS) {
+    D.tabs[k] = (Array.isArray(D.tabs[k]) ? D.tabs[k] : []).filter(good).map(t => {
+      let id = String(t.id || ""); if (!id || seen.has(k + id)) id = uid(); seen.add(k + id);
+      const w = num(t.w, 1, COLS, 3);
+      return {...t, id, w, h: num(t.h, 1, 40, 3), x: num(t.x, 0, COLS - w, 0), y: num(t.y, 0, 400, 0)};
+    });
+  }
+  if (!D.apps || typeof D.apps !== "object" || Array.isArray(D.apps)) D.apps = {};
+}
 async function start() {
   try { D = await api("GET", "/api/dash"); } catch { D = {}; }
   if (!ME) return;
   const fresh = !D.tabs;
   D.apps ||= {}; D.tabs ||= {};
   TABS.forEach(k => D.tabs[k] ||= DEF[k] ? DEF[k]() : []);
+  sane();
   if (D.v !== "0.3") {  // 0.3: the device and server lists leave the grid, and Apps becomes a plain list
     if (!D.v) { D.tabs.network = DEF.network(); D.tabs.servers = DEF.servers(); }  // 0.1 per-device tiles are replaced
     for (const k of ["network", "servers"]) { D.tabs[k] = D.tabs[k].filter(t => t.type !== "list"); place(D.tabs[k]); }
@@ -872,11 +952,13 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") $("#um").hid
 $("#so").onclick = signOut;
 
 // settings dialog
+const clearNotes = () => ["mmsg", "imsg", "bmsg", "perr", "uerr", "fb-msg"].forEach(i => note("#" + i, ""));
 function showSec(s) {
+  clearNotes();
   $("#sd").querySelectorAll("[data-s]").forEach(e => e.tagName === "SECTION" ? e.hidden = e.dataset.s !== s : e.setAttribute("aria-current", e.dataset.s === s));
   if (s === "users") loadUsers();
   if (s === "fb") fbInit();
-  if (s === "sec") { $("#idle").value = IDLE; $("#imsg").textContent = ""; }
+  if (s === "sec") { $("#idle").value = IDLE; note("#imsg", ""); }
   if (s === "brand") fillBrand();
   if (s === "account") { $("#acn").textContent = ME.name; $("#acr").textContent = ME.role; }
 }
@@ -887,6 +969,7 @@ function openSettings(s = "look") {
 $("#sb").onclick = () => openSettings();
 $("#sn").onclick = e => { const b = e.target.closest("button"); if (b) showSec(b.dataset.s); };
 $("#sx").onclick = () => $("#sd").close();
+$("#sd").addEventListener("close", clearNotes);
 $("#sd").onclick = e => { if (e.target === $("#sd")) $("#sd").close(); };
 
 async function loadUsers() {
@@ -894,9 +977,9 @@ async function loadUsers() {
     const r = await api("GET", "/api/users");
     $("#guestOn").checked = r.guest;
     $("#ulist").innerHTML = r.users.map(u => `<div class="ur" data-n="${esc(u.name)}"><b>${esc(u.name)}</b><select class="rl">${["viewer", "user", "admin"].map(x => `<option${x === u.role ? " selected" : ""}>${x}</option>`).join("")}</select><input class="np" type="password" placeholder="New password" autocomplete="new-password"><button class="setp">Set</button><button class="del">Delete</button></div>`).join("");
-  } catch (x) { $("#uerr").textContent = x.message; }
+  } catch (x) { note("#uerr", x.message); }
 }
-const uapi = (method, name, body) => api(method, "/api/users" + (name ? "/" + encodeURIComponent(name) : ""), body).then(() => { $("#uerr").textContent = ""; loadUsers(); }).catch(x => $("#uerr").textContent = x.message);
+const uapi = (method, name, body) => api(method, "/api/users" + (name ? "/" + encodeURIComponent(name) : ""), body).then(() => { note("#uerr", ""); loadUsers(); }).catch(x => note("#uerr", x.message));
 $("#ulist").onchange = e => { if (e.target.classList.contains("rl")) uapi("PUT", e.target.closest(".ur").dataset.n, {role: e.target.value}); };
 $("#ulist").onclick = e => {
   const row = e.target.closest(".ur");
@@ -909,25 +992,25 @@ $("#uf").onsubmit = async e => {
   await uapi("POST", "", {name: $("#un").value, password: $("#up").value, role: $("#ur").value});
   if (!$("#uerr").textContent) $("#uf").reset();
 };
-$("#isave").onclick = () => api("POST", "/api/settings", {idle_minutes: +$("#idle").value}).then(r => { IDLE = r.idle_minutes; $("#imsg").textContent = "Saved."; }).catch(x => { $("#imsg").textContent = x.message; });
-$("#guestOn").onchange = e => api("POST", "/api/settings", {guest: e.target.checked}).then(() => { GUEST = e.target.checked; }).catch(x => $("#uerr").textContent = x.message);
+$("#isave").onclick = () => api("POST", "/api/settings", {idle_minutes: +$("#idle").value}).then(r => { IDLE = r.idle_minutes; note("#imsg", "Saved."); }).catch(x => { note("#imsg", x.message); });
+$("#guestOn").onchange = e => api("POST", "/api/settings", {guest: e.target.checked}).then(() => { GUEST = e.target.checked; }).catch(x => note("#uerr", x.message));
 $("#pf").onsubmit = async e => {
   e.preventDefault();
-  try { await api("POST", "/api/me/password", {current: $("#pc").value, new: $("#pn").value}); $("#pf").reset(); $("#perr").textContent = "Password changed."; }
-  catch (x) { $("#perr").textContent = x.message; }
+  try { await api("POST", "/api/me/password", {current: $("#pc").value, new: $("#pn").value}); $("#pf").reset(); note("#perr", "Password changed."); }
+  catch (x) { note("#perr", x.message); }
 };
 
 function fillBrand() {
-  BRD = {...BR}; $("#b-name").value = BR.name; $("#b-tab").value = BR.tab; $("#b-tag").value = BR.tagline; $("#bmsg").textContent = ""; paintBrand();
+  BRD = {...BR}; $("#b-name").value = BR.name; $("#b-tab").value = BR.tab; $("#b-tag").value = BR.tagline; note("#bmsg", ""); paintBrand();
 }
 function paintBrand() { $("#b-logo").innerHTML = logoHtml(BRD.logo); $("#b-fav").innerHTML = logoHtml(BRD.favicon); }
 function pick(inp, key) {
   inp.onchange = () => {
     const f = inp.files[0]; inp.value = "";
     if (!f) return;
-    if (!/^image\//.test(f.type) || f.size > 500000) { $("#bmsg").textContent = "Choose an image under 500 KB."; return; }
+    if (!/^image\//.test(f.type) || f.size > 500000) { note("#bmsg", "Choose an image under 500 KB."); return; }
     const r = new FileReader();
-    r.onload = () => { BRD[key] = r.result; paintBrand(); $("#bmsg").textContent = ""; };
+    r.onload = () => { BRD[key] = r.result; paintBrand(); note("#bmsg", ""); };
     r.readAsDataURL(f);
   };
 }
@@ -937,8 +1020,8 @@ $("#r-fav").onclick = () => { BRD.favicon = ""; paintBrand(); };
 $("#bsave").onclick = async () => {
   try {
     BR = await api("PUT", "/api/brand", {name: $("#b-name").value, tab: $("#b-tab").value, tagline: $("#b-tag").value, logo: BRD.logo, favicon: BRD.favicon});
-    applyBrand(); $("#bmsg").textContent = "Saved.";
-  } catch (x) { $("#bmsg").textContent = x.message; }
+    applyBrand(); note("#bmsg", "Saved.");
+  } catch (x) { note("#bmsg", x.message); }
 };
 
 // feedback: opens a ready-filled new issue on GitHub (the repository's issue forms are filled by field id)
@@ -961,12 +1044,12 @@ function fbInit() {
 $("#fb-type").onchange = $("#fb-diag").onchange = fbInit; $("#fb-title").oninput = fbInit;
 $("#fb-go").onclick = () => {
   const msg = $("#fb-msg");
-  if ($("#fb-title").value.trim().length < 3) { msg.textContent = "Add a short title first."; return; }
+  if ($("#fb-title").value.trim().length < 3) { note(msg, "Add a short title first."); return; }
   const url = feedbackUrl();
-  if (url.length > 7000) { msg.textContent = "That's too long for a link. Shorten it; you can add more on GitHub."; return; }
-  window.open(url, "_blank", "noopener"); msg.textContent = "Opened on GitHub. Look it over and press Submit there.";
+  if (url.length > 7000) { note(msg, "That's too long for a link. Shorten it; you can add more on GitHub."); return; }
+  window.open(url, "_blank", "noopener"); note(msg, "Opened on GitHub. Look it over and press Submit there.");
 };
-$("#fb-save").onclick = () => api("POST", "/api/settings", {repo: $("#fb-repo").value.trim()}).then(r => { REPO = r.repo; fbInit(); $("#fb-msg").textContent = "Repository saved."; }).catch(x => { $("#fb-msg").textContent = x.message; });
+$("#fb-save").onclick = () => api("POST", "/api/settings", {repo: $("#fb-repo").value.trim()}).then(r => { REPO = r.repo; fbInit(); note("#fb-msg", "Repository saved."); }).catch(x => { note("#fb-msg", x.message); });
 
 (async function boot() {
   try { BR = await api("GET", "/api/brand"); } catch {}
