@@ -1,3 +1,7 @@
+v1.0.0-rc1 (2026-10-27)
+-Many many bug fixes.
+-Added icon caching.
+
 v0.4.1 (2026-10-20)
 -GitHub issue submission right from within the app.
 -Fill out the form in Beacon, and it takes you to issue submission with everything pre-filled to be checked by the user.
