@@ -1,7 +1,9 @@
 v1.0.0-rc2 (2026-11-20)
+-More little bug fixes.
 -Added data retention options and metric visibility.
--Icons now cache from https://dashboardicons.com with option to override via .env file.
+-Icons now cache from https://selfh.st with option to override via settings menu.
 -Added onboarding for admin user.
+-Combined throguhput statistics on summary tile.
 
 v1.0.0-rc1 (2026-10-27)
 -Bug fixes
