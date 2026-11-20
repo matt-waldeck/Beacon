@@ -28,6 +28,7 @@ try:
     for tab in ("home", "network", "servers", "apps"):
         pg.click(f"#tabs button[data-t={tab}]"); pg.wait_for_timeout(700)
         ok(f"{tab} tab shows", pg.is_visible("#lpanel") if tab != "home" else pg.is_visible("#grid"))
+    pg.click("#tabs button[data-t=home]"); pg.wait_for_timeout(700); sm = pg.inner_text("#grid .t-summary"); ok("Network summary shows one throughput total", "Throughput" in sm and "received" not in sm.lower() and "sent" not in sm.lower(), sm.replace("\n", " "))
     pg.click("#tabs button[data-t=network]"); pg.wait_for_timeout(800)
     ok("devices listed A-Z with live numbers", names(pg) == ["Core Switch", "Office AP"] and "–" not in pg.inner_text("#lpanel .items .li:nth-child(2) .c3"), names(pg))
     pg.click("#lpanel .items .li:first-child .lr"); pg.wait_for_timeout(500); ok("a row opens with a graph", pg.is_visible("#lpanel .items .li:first-child .ld canvas"))

@@ -62,6 +62,10 @@ before = os.path.getsize(m.DB); r = a.post("/api/storage/purge", json={"what": "
 chk("history deleted, devices and servers kept", (r["removed"] > 1000, m.sql("SELECT COUNT(*) FROM samples")[0][0], m.sql("SELECT COUNT(*) FROM pings")[0][0], len(a.get("/api/data").get_json()["devices"]), len(a.get("/api/servers").get_json()["servers"])), (True, 0, 0, 2, 1))
 chk("file shrank after the purge", os.path.getsize(m.DB) < before, True); chk("compact works", S(a.post("/api/storage/purge", json={"what": "compact"})), 200)
 chk("polling still works after a purge", (m.save_sample("A", {"ts": time.time(), "cpu": 1}), len(a.get("/api/data").get_json()["devices"][0]["series"]))[1], 1)
+print("== throughput tile mode ==")
+tile = lambda i, mode: {"id": i, "type": "stat", "ref": "n.net", "x": 0, "y": 0, "w": 3, "h": 2, **({"mode": mode} if mode else {})}
+a.put("/api/dash", json={"v": "0.3", "apps": {}, "tabs": {"network": [tile("a", "rx"), tile("b", "tx"), tile("c", "total"), tile("d", "bogus"), tile("e", None)]}})
+chk("the mode is kept, an unknown one dropped", [x.get("mode") for x in a.get("/api/dash").get_json()["tabs"]["network"]], ["rx", "tx", "total", None, None])
 print("== icon source ==")
 chk("selfh.st is the default", (a.get("/api/me").get_json()["icons"], m.icon_candidates("Home Assistant")[0]), ("selfhst", ("selfh.st", "https://cdn.jsdelivr.net/gh/selfhst/icons/svg/home-assistant.svg")))
 os.makedirs(m.ICON_DIR, exist_ok=True); open(os.path.join(m.ICON_DIR, "x.png"), "wb").write(b"\x89PNG" + b"0" * 50)
