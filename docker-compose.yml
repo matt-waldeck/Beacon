@@ -1,7 +1,7 @@
 services:
   beacon:
     build: .
-    image: beacon:1.0.0-rc1
+    image: beacon:1.0.0-rc2
     container_name: beacon
     restart: unless-stopped
     cap_add: [NET_RAW]  # lets the container send pings
@@ -9,14 +9,12 @@ services:
     volumes: ["./data:/data"]
     environment:
       UI_USER: ${UI_USER:-admin}
-      UI_PASSWORD: ${UI_PASSWORD:-}  # blank = an admin password is generated on first start (see the container log); when set it always resets UI_USER's password
+      UI_PASSWORD: ${UI_PASSWORD:-}  # blank = the first person to open Beacon creates the admin on a setup page; when set it skips that page and always resets UI_USER's password
       UI_AUTH: ${UI_AUTH:-}  # "off" only if your proxy handles the login
       TRUST_PROXY: ${TRUST_PROXY:-}  # 1 behind a reverse proxy, so lockouts use the real client IP
       COOKIE_SECURE: ${COOKIE_SECURE:-}  # 1 when Beacon is served over HTTPS
       GITHUB_REPO: ${GITHUB_REPO:-}  # where the Feedback page opens issues (default matt-waldeck/beacon)
-      HEIMDALL_SOURCE: ${HEIMDALL_SOURCE:-}  # app-icon sources; only set these to point at your own mirrors
-      DASHBOARD_ICONS_SOURCE: ${DASHBOARD_ICONS_SOURCE:-}
-      SELFHST_ICONS_SOURCE: ${SELFHST_ICONS_SOURCE:-}
+      DASHBOARD_ICONS_SOURCE: ${DASHBOARD_ICONS_SOURCE:-}  # app-icon source; only set this to point at your own mirror
       SSH_USER: ${SSH_USER:-}  # shared SSH login for every device, also set in .env
       SSH_PASSWORD: ${SSH_PASSWORD:-}
       SSH_KEY_FILE: ${SSH_KEY_FILE:-}

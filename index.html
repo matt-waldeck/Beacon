@@ -240,12 +240,14 @@ textarea{font:inherit;padding:.5rem .65rem;border:1px solid var(--rule);border-r
 <label>Mode <select id="theme"><option value="auto">Auto</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
 <label>Hover effect <select id="hover"><option value="none">None</option><option value="glow">Glow</option><option value="bounce">Bounce</option></select></label>
 <label id="funRow" class="chk" hidden><input type="checkbox" id="fun"> Extra fun (emoji, sparkles and little animations)</label>
-<label>Show last <select id="range"><option value="15">15 minutes</option><option value="60" selected>1 hour</option><option value="360">6 hours</option><option value="1440">24 hours</option></select></label>
+<label>Show last <select id="range"><option value="15">15 minutes</option><option value="60" selected>1 hour</option><option value="360">6 hours</option><option value="1440">24 hours</option><option value="10080">7 days</option><option value="43200">30 days</option></select></label>
 <label class="chk"><input type="checkbox" id="bands"> Split client counts by band (2.4 / 5 / 6 GHz)</label>
 <p class="mute">Saved in this browser only. Mode applies to Honeycrisp; Pastel is always light and Stark always dark.</p></section>
 <section data-s="mon" hidden><h3>Monitoring</h3>
 <div class="row"><label>Network checks every <input id="iv" type="number" min="5" max="3600"> s</label><button id="save" class="pri">Save</button></div>
 <div class="row"><label>Server pings every <input id="siv" type="number" min="5" max="3600"> s</label><button id="ssave" class="pri">Save</button></div>
+<div class="row"><label>Keep history for <input id="ret" type="number" min="1" max="365"> days</label><button id="rsave" class="pri">Save</button></div>
+<p class="mute" style="margin:0">Takes roughly 1 MB per device per day. Shortening this deletes the older history at the next check.</p>
 <span id="mmsg" class="mute"></span></section>
 <section data-s="sec" hidden><h3>Security</h3>
 <div class="row"><label>Sign out after <input id="idle" type="number" min="0" max="1440"> minutes of inactivity</label><button id="isave" class="pri">Save</button></div>
@@ -280,12 +282,20 @@ textarea{font:inherit;padding:.5rem .65rem;border:1px solid var(--rule);border-r
 <span id="fb-msg" class="mute"></span>
 <div class="row adm"><label>GitHub repository <input id="fb-repo" placeholder="owner/name"></label><button id="fb-save">Save</button></div>
 <p class="mute adm" style="margin:0">Needs the issue forms from .github/ISSUE_TEMPLATE in that repository. Diagnostics never include IP addresses, hostnames, device names or logs.</p></section>
-<section data-s="about" hidden><h3>About</h3><p><b class="bn">Beacon</b> <span id="ver"></span></p><p class="mute">Your data lives in the /data folder of the container.</p></section>
+<section data-s="about" hidden><h3>About</h3><p><b class="bn">Beacon</b> <span id="ver"></span></p><p class="mute">Your data lives in the /data folder of the container.</p>
+<div class="adm"><h4 style="margin:.6rem 0 .4rem">Storage</h4>
+<dl><dt>History database</dt><dd id="st-db">–</dd><dt>History covers</dt><dd id="st-span">–</dd><dt>Icon cache</dt><dd id="st-ic">–</dd><dt>Everything in /data</dt><dd id="st-all">–</dd><dt>Disk space free</dt><dd id="st-disk">–</dd></dl>
+<div class="row" style="justify-content:flex-start;flex-wrap:wrap;margin-top:.7rem"><button id="st-icons">Clear icon cache</button><button id="st-compact">Compact database</button><button id="st-hist">Delete history…</button></div>
+<span id="st-msg" class="mute"></span></div></section>
 </div></dialog>
 <div id="splash" hidden><form id="lf" class="tile card"><span class="bl logo big"></span><h2 class="bn">Beacon</h2><p id="tag" class="mute"></p>
 <input id="lu" placeholder="Name" autocomplete="username" required><input id="lp" type="password" placeholder="Password" autocomplete="current-password" required>
 <label class="chk"><input type="checkbox" id="lr"> Keep me signed in</label><span id="lerr" class="err" role="alert"></span>
-<button class="pri">Sign in</button><button type="button" id="lg" class="gb" hidden>Continue as guest</button></form></div>
+<button class="pri">Sign in</button><button type="button" id="lg" class="gb" hidden>Continue as guest</button></form>
+<form id="sf" class="tile card" hidden><span class="bl logo big"></span><h2 class="bn">Beacon</h2><p class="mute">Welcome! Create the admin account to get started.</p>
+<input id="sfu" placeholder="Admin name" value="admin" autocomplete="username" required maxlength="40"><input id="sfe" type="email" placeholder="Email" autocomplete="email" required>
+<input id="sfp" type="password" placeholder="Password (8+ characters)" autocomplete="new-password" required minlength="8"><input id="sfc" type="password" placeholder="Confirm password" autocomplete="new-password" required minlength="8">
+<span id="sferr" class="err" role="alert"></span><button class="pri">Create account</button></form></div>
 <p id="none" class="mute" hidden></p>
 <div id="grid"></div>
 <div id="lpanel"></div>
@@ -372,7 +382,8 @@ const g = n => getComputedStyle(document.documentElement).getPropertyValue(n).tr
 const bps = b => b >= 1e6 ? (b / 1e6).toFixed(1) + " Mbps" : Math.round(b / 1e3) + " kbps";
 const pct = v => v + "%", W = v => v.toFixed(1) + " W", MS = v => v.toFixed(1) + " ms", PC = v => Math.round(v) + "%";
 const up = s => { const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60); return d ? `${d}d ${h}h` : `${h}h ${m}m`; };
-const lab = ts => new Date(ts * 1000).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit", second: "2-digit"});
+let RANGE = 60;  // minutes shown on the graphs; ranges over a day label the graph with dates
+const lab = ts => new Date(ts * 1000).toLocaleString([], RANGE > 1440 ? {month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"} : {hour: "2-digit", minute: "2-digit", second: "2-digit"});
 
 async function api(method, url, body) {
   const r = await fetch(url, {method, headers: {"Content-Type": "application/json"}, body: body && JSON.stringify(body)});
@@ -468,13 +479,13 @@ const mk = (el, sets, max, fmt) => new Chart(el, {type: "line",
 const upd = (c, labels, ...sets) => { c.data.labels = labels; sets.forEach((s, i) => c.data.datasets[i].data = s); c.update(); };
 
 const slug = n => n.toLowerCase().trim().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-function icon(a) {  // emoji as-is, an image address as an image; blank = Beacon looks the app up by name (Heimdall's list, Dashboard Icons, selfh.st) and keeps a copy
+function icon(a) {  // emoji as-is, an image address as an image; blank = Beacon looks the app up by name (Dashboard Icons) and keeps a copy
   const span = document.createElement("span"), ic = (a.icon || "").trim(), nm = (a.name || "").trim(), s = slug(nm);
   span.className = "ic";
   const letter = () => { span.textContent = (nm || "?")[0]; };
   if (ic && !/^https?:\/\//i.test(ic)) { span.textContent = ic; return span; }
   const own = `/api/icon?name=${encodeURIComponent(nm)}`;
-  const c = ic ? [ic] : nm ? [own, ...(s ? [`https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/${s}.svg`, `https://cdn.jsdelivr.net/gh/selfhst/icons/png/${s}.png`] : [])] : [];
+  const c = ic ? [ic] : nm ? [own, ...(s ? [`https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/${s}.svg`, `https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/${s}.png`] : [])] : [];
   if (!c.length) { letter(); return span; }
   const img = new Image(); let i = 0;
   img.alt = ""; img.src = c[0];
@@ -500,11 +511,12 @@ function devFacts(d) {
     <dt>Uptime</dt><dd>${last.uptime ? up(last.uptime) : "–"}</dd>${last.clients != null ? `<dt>Clients</dt><dd>${last.clients}</dd>` + bandRows(last.bands) : ""}
     <dt>Load</dt><dd>${esc(last.load)}</dd>${last.poe != null ? `<dt>PoE draw</dt><dd>${last.poe} W</dd>` : ""}</dl>`;
 }
-function srvFacts(s) {
-  const ok = s.series.filter(x => x.ms != null), l = s.series.at(-1), n = s.series.length;
+function srvFacts(s) {  // works on raw results and on averaged steps (which carry n = results, d = no reply, max)
+  const l = s.series.at(-1), cnt = x => x.n ?? 1, downs = x => x.d ?? (x.ms == null ? 1 : 0), w = x => cnt(x) - downs(x), up = s.series.filter(x => x.ms != null);
+  const n = sum(s.series.map(cnt)) || 0, d = sum(s.series.map(downs)) || 0, wt = sum(up.map(w)), worst = mx(up.map(x => x.max ?? x.ms));
   return `<dl><dt>Type</dt><dd>${s.type === "vm" ? "Virtual machine" : "Server"}</dd><dt>Status</dt><dd>${!l ? "–" : l.ms != null ? "Online" : "Offline"}</dd><dt>Ping</dt><dd>${l?.ms != null ? MS(l.ms) : "–"}</dd>
-    <dt>Average</dt><dd>${ok.length ? MS(avg(ok.map(x => x.ms))) : "–"}</dd><dt>Worst</dt><dd>${ok.length ? MS(mx(ok.map(x => x.ms))) : "–"}</dd>
-    <dt>Loss</dt><dd>${n ? Math.round(100 * (1 - ok.length / n)) + "%" : "–"}</dd></dl>`;
+    <dt>Average</dt><dd>${wt ? MS(sum(up.map(x => x.ms * w(x))) / wt) : "–"}</dd><dt>Worst</dt><dd>${worst != null ? MS(worst) : "–"}</dd>
+    <dt>Loss</dt><dd>${n ? Math.round(100 * d / n) + "%" : "–"}</dd></dl>`;
 }
 
 // UniFi-style lists: one row per item, click a row for the details and graphs
@@ -777,10 +789,18 @@ $("#add").onchange = e => {
 };
 
 // ---- data ----
+function fitRange() {  // only offer ranges that the kept history can cover
+  const sel = $("#range"), max = Math.max(1440, DATA.retention_days * 1440);
+  [...sel.options].forEach(o => { o.hidden = o.disabled = +o.value > max; });
+  if (+sel.value > max) { sel.value = [...sel.options].filter(o => !o.disabled).at(-1).value; RANGE = +sel.value; }
+}
 async function load() {
   try {
-    DATA = await api("GET", `/api/data?minutes=${$("#range").value}`);
+    RANGE = +$("#range").value;
+    DATA = await api("GET", `/api/data?minutes=${RANGE}`);
     if (!ME) return;
+    fitRange();
+    if (document.activeElement !== $("#ret")) $("#ret").value = DATA.retention_days;
     iv = DATA.interval; siv = DATA.server_interval; $("#ver").textContent = "Version " + DATA.version;
     if (document.activeElement !== $("#iv")) $("#iv").value = iv;
     if (document.activeElement !== $("#siv")) $("#siv").value = siv;
@@ -839,7 +859,8 @@ $("#edit").onclick = () => {
 const setIv = (id, key) => () => api("POST", "/api/settings", {[key]: +$(id).value}).then(() => { note("#mmsg", "Saved."); refresh(); }).catch(x => { note("#mmsg", x.message); });
 $("#save").onclick = setIv("#iv", "interval");
 $("#ssave").onclick = setIv("#siv", "server_interval");
-$("#range").onchange = refresh;
+$("#rsave").onclick = setIv("#ret", "retention_days");
+$("#range").onchange = () => { lsSet("range", $("#range").value); refresh(); };
 $("#bands").onchange = e => { bandsOn = e.target.checked; lsSet("bands", bandsOn ? "1" : "0"); renderGrid(); };
 $("#style").onchange = () => { lsSet("style", $("#style").value); applyTheme(true); };
 $("#theme").onchange = () => { lsSet("theme", $("#theme").value); applyTheme(true); };
@@ -849,7 +870,7 @@ new ResizeObserver(() => movePill()).observe($("#tabs")); document.fonts?.ready.
 matchMedia("(prefers-color-scheme: dark)").onchange = () => { if ($("#theme").value === "auto") applyTheme(true); };
 
 // ---- branding, sign-in, settings ----
-let BR = {name: "Beacon", tab: "", tagline: "", logo: "", favicon: ""}, ME = null, GUEST = false, AUTHON = true, BRD = {}, IDLE = 10, REM = false, REPO = "matt-waldeck/beacon";
+let BR = {name: "Beacon", tab: "", tagline: "", logo: "", favicon: ""}, ME = null, GUEST = false, AUTHON = true, BRD = {}, IDLE = 10, REM = false, SETUP = false, REPO = "matt-waldeck/beacon";
 const MARK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>`;
 const logoHtml = src => src ? `<img src="${esc(src)}" alt="">` : MARK;
 function applyBrand() {
@@ -871,8 +892,9 @@ function splash(msg) {  // the sign-in screen
   ME = null; stop();
   document.body.classList.add("splashing"); document.body.classList.remove("booting");
   $("#sd").close(); $("#splash").hidden = false;
-  $("#lg").hidden = !GUEST; $("#lerr").textContent = msg || ""; $("#lu").focus();
-  api("GET", "/api/me").then(m => { readMe(m); $("#lg").hidden = !GUEST; }).catch(() => {});  // guest access may have been switched on since this page loaded
+  $("#lf").hidden = SETUP; $("#sf").hidden = !SETUP; (SETUP ? $("#sfe") : $("#lu")).focus();
+  $("#lg").hidden = !GUEST; $("#lerr").textContent = msg || "";
+  api("GET", "/api/me").then(m => { readMe(m); $("#lg").hidden = !GUEST; $("#lf").hidden = SETUP; $("#sf").hidden = !SETUP; }).catch(() => {});  // guest access may have been switched on since this page loaded
 }
 function enter(u) {
   ME = u; $("#splash").hidden = true;
@@ -910,13 +932,15 @@ async function start() {
     D.tabs.apps = []; D.v = "0.3"; save();
   } else if (fresh) save();
   bandsOn = lsGet("bands") === "1"; $("#bands").checked = bandsOn;
+  const rg = lsGet("range"); if (rg && [...$("#range").options].some(o => o.value === rg)) $("#range").value = rg;
+  RANGE = +$("#range").value;
   const sty = lsGet("style"); $("#style").value = ["pastel", "stark"].includes(sty) ? sty : "honeycrisp"; $("#theme").value = lsGet("theme") || "auto";
   applyTheme(false);
   setTab(location.hash.slice(1));
   load(); loadS();
 }
 const signOut = async () => { try { await api("POST", "/api/logout"); } catch {} splash(); };
-function readMe(m) { GUEST = !!m.guest; AUTHON = m.auth !== false; IDLE = m.idle ?? 10; REM = !!m.remember; REPO = m.repo || REPO; }
+function readMe(m) { SETUP = !!m.setup; GUEST = !!m.guest; AUTHON = m.auth !== false; IDLE = m.idle ?? 10; REM = !!m.remember; REPO = m.repo || REPO; }
 
 // inactivity: real use (mouse, keyboard, touch) is reported to the server now and then; the page itself polling does not count
 let lastAct = Date.now(), lastBeat = 0;
@@ -938,6 +962,15 @@ $("#lf").onsubmit = async e => {
     $("#lp").value = ""; const m = await api("GET", "/api/me"); readMe(m); enter(m.user);
   } catch (x) { $("#lerr").textContent = x.message; }
 };
+$("#sf").onsubmit = async e => {
+  e.preventDefault();
+  if ($("#sfp").value !== $("#sfc").value) { $("#sferr").textContent = "The passwords don't match."; return; }
+  try {
+    await api("POST", "/api/setup", {name: $("#sfu").value, email: $("#sfe").value, password: $("#sfp").value});
+    $("#sfp").value = $("#sfc").value = ""; $("#sferr").textContent = "";
+    const m = await api("GET", "/api/me"); readMe(m); enter(m.user);
+  } catch (x) { $("#sferr").textContent = x.message; }
+};
 $("#lg").onclick = async () => {
   try { await api("POST", "/api/login", {guest: true}); const m = await api("GET", "/api/me"); readMe(m); enter(m.user); } catch (x) { $("#lerr").textContent = x.message; }
 };
@@ -952,12 +985,13 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") $("#um").hid
 $("#so").onclick = signOut;
 
 // settings dialog
-const clearNotes = () => ["mmsg", "imsg", "bmsg", "perr", "uerr", "fb-msg"].forEach(i => note("#" + i, ""));
+const clearNotes = () => ["mmsg", "imsg", "bmsg", "perr", "uerr", "fb-msg", "st-msg"].forEach(i => note("#" + i, ""));
 function showSec(s) {
   clearNotes();
   $("#sd").querySelectorAll("[data-s]").forEach(e => e.tagName === "SECTION" ? e.hidden = e.dataset.s !== s : e.setAttribute("aria-current", e.dataset.s === s));
   if (s === "users") loadUsers();
   if (s === "fb") fbInit();
+  if (s === "about" && can(3)) loadStorage();
   if (s === "sec") { $("#idle").value = IDLE; note("#imsg", ""); }
   if (s === "brand") fillBrand();
   if (s === "account") { $("#acn").textContent = ME.name; $("#acr").textContent = ME.role; }
@@ -971,6 +1005,24 @@ $("#sn").onclick = e => { const b = e.target.closest("button"); if (b) showSec(b
 $("#sx").onclick = () => $("#sd").close();
 $("#sd").addEventListener("close", clearNotes);
 $("#sd").onclick = e => { if (e.target === $("#sd")) $("#sd").close(); };
+
+const bytes = n => n < 1024 ? n + " B" : n < 1048576 ? (n / 1024).toFixed(0) + " KB" : n < 1073741824 ? (n / 1048576).toFixed(1) + " MB" : (n / 1073741824).toFixed(2) + " GB";
+async function loadStorage() {
+  try {
+    const r = await api("GET", "/api/storage");
+    $("#st-db").textContent = `${bytes(r.db.bytes)} (${r.db.samples.toLocaleString()} device samples, ${r.db.pings.toLocaleString()} pings${r.db.reusable > 1048576 ? ", " + bytes(r.db.reusable) + " reusable" : ""})`;
+    $("#st-span").textContent = r.db.since ? `${((Date.now() / 1000 - r.db.since) / 86400).toFixed(1)} days (keeping ${r.retention_days})` : "nothing yet";
+    $("#st-ic").textContent = `${bytes(r.icons.bytes)} (${r.icons.count} icons)`; $("#st-all").textContent = bytes(r.data.bytes); $("#st-disk").textContent = `${bytes(r.disk.free)} of ${bytes(r.disk.total)}`;
+  } catch (x) { note("#st-msg", x.message); }
+}
+const purge = (what, ask, done) => async () => {
+  if (ask && !confirm(ask)) return;
+  try { const r = await api("POST", "/api/storage/purge", {what}); note("#st-msg", done(r)); loadStorage(); if (what === "history") refresh(); }
+  catch (x) { note("#st-msg", x.message); }
+};
+$("#st-icons").onclick = purge("icons", "Clear the icon cache? Icons are fetched again when needed.", r => `Removed ${r.removed} icons.`);
+$("#st-compact").onclick = purge("compact", "", () => "Database compacted.");
+$("#st-hist").onclick = purge("history", "Delete ALL history, both device and server graphs? This can't be undone. Your devices, servers, apps and settings are kept.", r => `Deleted ${r.removed.toLocaleString()} records.`);
 
 async function loadUsers() {
   try {
