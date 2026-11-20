@@ -6,7 +6,7 @@ A simple, good-looking monitoring dashboard for homelabs. Beacon logs in to your
 
 - **Network:** CPU, memory, load, uptime, throughput, clients (with a 2.4 / 5 / 6 GHz split) and PoE draw from UniFi devices, in a sortable list with graphs for each device.
 - **Servers:** ping time and up/down status, marked as a server or a virtual machine.
-- **Apps:** a launcher with icons looked up for you from Dashboard Icons.
+- **Apps:** a launcher with icons looked up for you from selfh.st (or Dashboard Icons, your choice).
 - **Home and tiles:** drag, resize and add tiles for anything Beacon tracks, with a choice of hover effects.
 - **Looks:** Honeycrisp (glass), Pastel and Stark themes, your own name, logo and favicon.
 - **People:** several users (admin, user, viewer), an optional view-only guest profile, inactivity sign-out.
@@ -29,7 +29,7 @@ Your data lives in `./data`. Back that folder up. History is kept for 7 days by 
 | `UI_AUTH=off` | No sign-in at all. Only if your reverse proxy handles it |
 | `TRUST_PROXY=1`, `COOKIE_SECURE=1`, `BIND_ADDR=127.0.0.1` | Behind a reverse proxy: real client addresses, HTTPS cookies, loopback-only port |
 | `GITHUB_REPO` | Where Settings > Feedback opens issues |
-| `DASHBOARD_ICONS_SOURCE` | Icon source, for your own mirror |
+| `SELFHST_ICONS_SOURCE`, `DASHBOARD_ICONS_SOURCE` | Icon collections, for your own mirrors |
 
 ## Security notes
 
@@ -48,7 +48,11 @@ Replace the files and run `docker compose up -d --build`. Settings > About shows
 
 ## Icons
 
-App icons come from [Dashboard Icons](https://github.com/homarr-labs/dashboard-icons) (Apache-2.0), fetched on demand and cached in `./data/icons`; Beacon does not bundle or redistribute them. The logos are trademarks of their respective owners and are shown only to identify the apps.
+App icons are looked up by name in the [selfh.st icon collection](https://selfh.st/icons) by default, or in [Dashboard Icons](https://github.com/homarr-labs/dashboard-icons) if you pick it under Settings > About. They are fetched on demand and cached in `./data/icons`; Beacon does not bundle or redistribute them, and switching source clears the cache.
+
+- selfh.st icons are licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/): credit to selfh.st is given here and in Settings > About.
+- Dashboard Icons is Apache-2.0.
+- In both, the logos themselves are trademarks of their respective owners and are shown only to identify the apps.
 
 ## Feedback
 
