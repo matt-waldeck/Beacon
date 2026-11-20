@@ -14,7 +14,8 @@ services:
       TRUST_PROXY: ${TRUST_PROXY:-}  # 1 behind a reverse proxy, so lockouts use the real client IP
       COOKIE_SECURE: ${COOKIE_SECURE:-}  # 1 when Beacon is served over HTTPS
       GITHUB_REPO: ${GITHUB_REPO:-}  # where the Feedback page opens issues (default matt-waldeck/beacon)
-      DASHBOARD_ICONS_SOURCE: ${DASHBOARD_ICONS_SOURCE:-}  # app-icon source; only set this to point at your own mirror
+      SELFHST_ICONS_SOURCE: ${SELFHST_ICONS_SOURCE:-}  # app-icon collections (chosen in Settings > About); only set these to point at your own mirrors
+      DASHBOARD_ICONS_SOURCE: ${DASHBOARD_ICONS_SOURCE:-}
       SSH_USER: ${SSH_USER:-}  # shared SSH login for every device, also set in .env
       SSH_PASSWORD: ${SSH_PASSWORD:-}
       SSH_KEY_FILE: ${SSH_KEY_FILE:-}

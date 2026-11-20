@@ -90,7 +90,7 @@ def devices():
 def conf():
     s = read_json(SET, {})
     s = s if isinstance(s, dict) else {}
-    return {"interval": s.get("interval", cfg().get("interval", 30)), "server_interval": s.get("server_interval", 15), "guest": bool(s.get("guest", False)), "idle_minutes": int(s.get("idle_minutes", 10)), "repo": str(s.get("repo", "")), "retention_days": s.get("retention_days")}
+    return {"interval": s.get("interval", cfg().get("interval", 30)), "server_interval": s.get("server_interval", 15), "guest": bool(s.get("guest", False)), "idle_minutes": int(s.get("idle_minutes", 10)), "repo": str(s.get("repo", "")), "retention_days": s.get("retention_days"), "icon_source": s.get("icon_source") if s.get("icon_source") in ICON_SOURCES else DEFAULT_ICONS}
 
 
 def interval():
@@ -292,6 +292,13 @@ def set_settings():
         return bad("Enter a whole number.")
     if "guest" in j:
         s["guest"] = bool(j["guest"])
+    if "icon_source" in j:  # which icon collection names are looked up in; a change clears the cache so icons are found again
+        k = str(j["icon_source"])
+        if k not in ICON_SOURCES:
+            return bad("Unknown icon source.")
+        if k != s["icon_source"]:
+            s["icon_source"] = k
+            clear_icons()
     if "repo" in j:  # the GitHub repository the Feedback page opens issues on; blank = the default
         r = str(j["repo"]).strip()
         if r and not re.fullmatch(r"[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}", r):
@@ -559,7 +566,7 @@ def put_dash():
 
 @app.get("/api/me")
 def me():
-    return jsonify(user=who(), setup=needs_setup(), guest=conf()["guest"], auth=not AUTH_OFF, version=VERSION, idle=conf()["idle_minutes"], remember=bool(session.get("r")), repo=conf()["repo"] or DEFAULT_REPO)
+    return jsonify(user=who(), setup=needs_setup(), guest=conf()["guest"], auth=not AUTH_OFF, version=VERSION, idle=conf()["idle_minutes"], icons=conf()["icon_source"], remember=bool(session.get("r")), repo=conf()["repo"] or DEFAULT_REPO)
 
 
 @app.post("/api/login")
@@ -770,7 +777,11 @@ def source_url(env, default):
     return (os.environ.get(env) or default).rstrip("/") + "/"
 
 
-DASH_ICONS = source_url("DASHBOARD_ICONS_SOURCE", "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons")
+ICON_SOURCES = {  # key: (name shown, base address). Both serve /svg/<name>.svg and /png/<name>.png with lowercase-hyphen names
+    "selfhst": ("selfh.st", source_url("SELFHST_ICONS_SOURCE", "https://cdn.jsdelivr.net/gh/selfhst/icons")),  # CC BY 4.0: credit is shown in Settings > About and the README
+    "dashboard": ("Dashboard Icons", source_url("DASHBOARD_ICONS_SOURCE", "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons")),  # Apache-2.0
+}
+DEFAULT_ICONS = "selfhst"
 MIME = {"png": "image/png", "jpg": "image/jpeg", "gif": "image/gif", "ico": "image/x-icon", "webp": "image/webp", "svg": "image/svg+xml"}
 SIGNATURES = {b"\x89PNG": "png", b"\xff\xd8\xff": "jpg", b"GIF8": "gif", b"\x00\x00\x01\x00": "ico"}
 iconq, pending, icon_sem = queue.Queue(), set(), threading.BoundedSemaphore(3)
@@ -806,12 +817,20 @@ def image_kind(data):  # what the bytes really are, or None when they aren't a s
     return None
 
 
-def icon_candidates(name):  # Dashboard Icons (Apache-2.0) is the only source; its icon names are lowercase with hyphens
+def icon_candidates(name):  # the chosen collection only (Settings > About); icon names are lowercase with hyphens
+    label, base = ICON_SOURCES[conf()["icon_source"]]
     out, n, sl = [], norm(name), slug(name)
     for k in dict.fromkeys([sl, n]):
         if k:
-            out += [("Dashboard Icons", f"{DASH_ICONS}svg/{k}.svg"), ("Dashboard Icons", f"{DASH_ICONS}png/{k}.png")]
+            out += [(label, f"{base}svg/{k}.svg"), (label, f"{base}png/{k}.png")]
     return out
+
+
+def clear_icons():  # cached icons and remembered misses; icons are fetched again when needed
+    files = os.listdir(ICON_DIR) if os.path.isdir(ICON_DIR) else []
+    for f in files:
+        os.remove(os.path.join(ICON_DIR, f))
+    return len([f for f in files if f.rsplit(".", 1)[-1] in MIME])
 
 
 def icon_path(key):
@@ -923,10 +942,7 @@ def storage():  # admin: how much room the history and the icon cache take
 def purge():
     what = (request.get_json(silent=True) or {}).get("what")
     if what == "icons":  # icons are fetched again when needed
-        files = os.listdir(ICON_DIR) if os.path.isdir(ICON_DIR) else []
-        for f in files:
-            os.remove(os.path.join(ICON_DIR, f))
-        return jsonify(ok=True, removed=len([f for f in files if f.rsplit(".", 1)[-1] in MIME]))
+        return jsonify(ok=True, removed=clear_icons())
     if what == "history":  # graphs start again from now; devices, servers and settings stay
         n = sql("SELECT (SELECT COUNT(*) FROM samples) + (SELECT COUNT(*) FROM pings)")[0][0]
         sql("DELETE FROM samples")

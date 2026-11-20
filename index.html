@@ -285,6 +285,8 @@ textarea{font:inherit;padding:.5rem .65rem;border:1px solid var(--rule);border-r
 <section data-s="about" hidden><h3>About</h3><p><b class="bn">Beacon</b> <span id="ver"></span></p><p class="mute">Your data lives in the /data folder of the container.</p>
 <div class="adm"><h4 style="margin:.6rem 0 .4rem">Storage</h4>
 <dl><dt>History database</dt><dd id="st-db">–</dd><dt>History covers</dt><dd id="st-span">–</dd><dt>Icon cache</dt><dd id="st-ic">–</dd><dt>Everything in /data</dt><dd id="st-all">–</dd><dt>Disk space free</dt><dd id="st-disk">–</dd></dl>
+<div class="row" style="justify-content:flex-start;flex-wrap:wrap;margin-top:.7rem"><label>Icon source <select id="icsrc"><option value="selfhst">selfh.st</option><option value="dashboard">Dashboard Icons</option></select></label></div>
+<p class="mute" style="margin:.3rem 0 0">Changing it clears the icon cache. Icons: <a href="https://selfh.st/icons" target="_blank" rel="noopener">selfh.st/icons</a> (CC BY 4.0) and <a href="https://github.com/homarr-labs/dashboard-icons" target="_blank" rel="noopener">Dashboard Icons</a> (Apache-2.0); logos belong to their owners.</p>
 <div class="row" style="justify-content:flex-start;flex-wrap:wrap;margin-top:.7rem"><button id="st-icons">Clear icon cache</button><button id="st-compact">Compact database</button><button id="st-hist">Delete history…</button></div>
 <span id="st-msg" class="mute"></span></div></section>
 </div></dialog>
@@ -479,13 +481,13 @@ const mk = (el, sets, max, fmt) => new Chart(el, {type: "line",
 const upd = (c, labels, ...sets) => { c.data.labels = labels; sets.forEach((s, i) => c.data.datasets[i].data = s); c.update(); };
 
 const slug = n => n.toLowerCase().trim().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-function icon(a) {  // emoji as-is, an image address as an image; blank = Beacon looks the app up by name (Dashboard Icons) and keeps a copy
+function icon(a) {  // emoji as-is, an image address as an image; blank = Beacon looks the app up by name (in the icon collection chosen in Settings > About) and keeps a copy
   const span = document.createElement("span"), ic = (a.icon || "").trim(), nm = (a.name || "").trim(), s = slug(nm);
   span.className = "ic";
   const letter = () => { span.textContent = (nm || "?")[0]; };
   if (ic && !/^https?:\/\//i.test(ic)) { span.textContent = ic; return span; }
-  const own = `/api/icon?name=${encodeURIComponent(nm)}`;
-  const c = ic ? [ic] : nm ? [own, ...(s ? [`https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/${s}.svg`, `https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/${s}.png`] : [])] : [];
+  const own = `/api/icon?name=${encodeURIComponent(nm)}&s=${ICONS}`, base = ICONS === "dashboard" ? "homarr-labs/dashboard-icons" : "selfhst/icons";
+  const c = ic ? [ic] : nm ? [own, ...(s ? [`https://cdn.jsdelivr.net/gh/${base}/svg/${s}.svg`, `https://cdn.jsdelivr.net/gh/${base}/png/${s}.png`] : [])] : [];
   if (!c.length) { letter(); return span; }
   const img = new Image(); let i = 0;
   img.alt = ""; img.src = c[0];
@@ -870,7 +872,7 @@ new ResizeObserver(() => movePill()).observe($("#tabs")); document.fonts?.ready.
 matchMedia("(prefers-color-scheme: dark)").onchange = () => { if ($("#theme").value === "auto") applyTheme(true); };
 
 // ---- branding, sign-in, settings ----
-let BR = {name: "Beacon", tab: "", tagline: "", logo: "", favicon: ""}, ME = null, GUEST = false, AUTHON = true, BRD = {}, IDLE = 10, REM = false, SETUP = false, REPO = "matt-waldeck/beacon";
+let BR = {name: "Beacon", tab: "", tagline: "", logo: "", favicon: ""}, ME = null, GUEST = false, AUTHON = true, BRD = {}, IDLE = 10, REM = false, SETUP = false, ICONS = "selfhst", REPO = "matt-waldeck/beacon";
 const MARK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>`;
 const logoHtml = src => src ? `<img src="${esc(src)}" alt="">` : MARK;
 function applyBrand() {
@@ -940,7 +942,7 @@ async function start() {
   load(); loadS();
 }
 const signOut = async () => { try { await api("POST", "/api/logout"); } catch {} splash(); };
-function readMe(m) { SETUP = !!m.setup; GUEST = !!m.guest; AUTHON = m.auth !== false; IDLE = m.idle ?? 10; REM = !!m.remember; REPO = m.repo || REPO; }
+function readMe(m) { ICONS = m.icons || ICONS; SETUP = !!m.setup; GUEST = !!m.guest; AUTHON = m.auth !== false; IDLE = m.idle ?? 10; REM = !!m.remember; REPO = m.repo || REPO; }
 
 // inactivity: real use (mouse, keyboard, touch) is reported to the server now and then; the page itself polling does not count
 let lastAct = Date.now(), lastBeat = 0;
@@ -1012,6 +1014,7 @@ async function loadStorage() {
     const r = await api("GET", "/api/storage");
     $("#st-db").textContent = `${bytes(r.db.bytes)} (${r.db.samples.toLocaleString()} device samples, ${r.db.pings.toLocaleString()} pings${r.db.reusable > 1048576 ? ", " + bytes(r.db.reusable) + " reusable" : ""})`;
     $("#st-span").textContent = r.db.since ? `${((Date.now() / 1000 - r.db.since) / 86400).toFixed(1)} days (keeping ${r.retention_days})` : "nothing yet";
+    $("#icsrc").value = ICONS;
     $("#st-ic").textContent = `${bytes(r.icons.bytes)} (${r.icons.count} icons)`; $("#st-all").textContent = bytes(r.data.bytes); $("#st-disk").textContent = `${bytes(r.disk.free)} of ${bytes(r.disk.total)}`;
   } catch (x) { note("#st-msg", x.message); }
 }
@@ -1019,6 +1022,11 @@ const purge = (what, ask, done) => async () => {
   if (ask && !confirm(ask)) return;
   try { const r = await api("POST", "/api/storage/purge", {what}); note("#st-msg", done(r)); loadStorage(); if (what === "history") refresh(); }
   catch (x) { note("#st-msg", x.message); }
+};
+$("#icsrc").onchange = async () => {
+  const v = $("#icsrc").value;
+  try { await api("POST", "/api/settings", {icon_source: v}); ICONS = v; note("#st-msg", "Icon source changed. The icon cache was cleared, so icons are looked up again."); loadStorage(); refresh(); }
+  catch (x) { $("#icsrc").value = ICONS; note("#st-msg", x.message); }
 };
 $("#st-icons").onclick = purge("icons", "Clear the icon cache? Icons are fetched again when needed.", r => `Removed ${r.removed} icons.`);
 $("#st-compact").onclick = purge("compact", "", () => "Database compacted.");
