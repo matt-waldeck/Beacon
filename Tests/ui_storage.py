@@ -45,6 +45,9 @@ try:
     pg.click("#sb"); pg.click("#sn button[data-s=about]"); pg.wait_for_timeout(1200)
     st = {k: pg.inner_text("#st-" + k) for k in ("db", "span", "ic", "all", "disk")}; ok("storage figures show", all(v and v != "–" for v in st.values()) and "device samples" in st["db"] and "pings" in st["db"], st)
     ok("it knows how far back the history goes", "days" in st["span"] and "keeping 30" in st["span"], st["span"])
+    ok("icon source dropdown sits with the storage figures and defaults to selfh.st", pg.is_visible("#icsrc") and pg.input_value("#icsrc") == "selfhst")
+    pg.select_option("#icsrc", "dashboard"); pg.wait_for_timeout(1000); ok("changing the icon source confirms it", "Icon source changed" in pg.inner_text("#st-msg") and pg.evaluate("fetch('/api/me').then(r => r.json()).then(m => m.icons)") == "dashboard")
+    pg.select_option("#icsrc", "selfhst"); pg.wait_for_timeout(800)
     pg.once("dialog", lambda d: d.dismiss()); pg.click("#st-hist"); pg.wait_for_timeout(600); ok("cancelling a delete keeps everything", pg.evaluate("fetch('/api/storage').then(r => r.json()).then(s => s.db.samples)") > 1000)  # shortening to 3 days earlier already pruned the older rows
     pg.once("dialog", lambda d: d.accept()); pg.click("#st-icons"); pg.wait_for_timeout(800); ok("clear icon cache reports back", "Removed" in pg.inner_text("#st-msg"), pg.inner_text("#st-msg"))
     pg.click("#st-compact"); pg.wait_for_timeout(1200); ok("compact reports back", "compacted" in pg.inner_text("#st-msg"))
@@ -52,7 +55,7 @@ try:
     s = pg.evaluate("fetch('/api/storage').then(r => r.json())"); ok("history deleted (a few fresh samples may arrive straight after)", s["db"]["samples"] < 20 and s["db"]["pings"] < 20, s["db"])
     ok("devices and servers are still there", pg.evaluate("fetch('/api/data').then(r => r.json()).then(d => d.devices.length)") == 2)
     pg.click("#sx"); pg.click("#who"); pg.click("#umo"); pg.wait_for_timeout(700); login(pg, "viewer1", "password1"); pg.click("#sb"); pg.click("#sn button[data-s=about]")
-    ok("viewers see no storage block", not pg.is_visible("#st-db") and not pg.is_visible("#st-hist"))
+    ok("viewers see no storage block or icon source", not pg.is_visible("#st-db") and not pg.is_visible("#st-hist") and not pg.is_visible("#icsrc"))
     print("  page errors:", errs or "none"); b.close()
 finally:
     srv.terminate(); shutil.rmtree(DATA, ignore_errors=True)
