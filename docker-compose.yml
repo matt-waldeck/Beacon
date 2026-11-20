@@ -6,7 +6,7 @@ services:
     restart: unless-stopped
     cap_add: [NET_RAW]  # lets the container send pings
     ports: ["${BIND_ADDR:-0.0.0.0}:8080:8080"]  # BIND_ADDR=127.0.0.1 when a proxy on this host fronts it
-    volumes: ["./data:/data"]
+    volumes: ["./beacon:/data"]
     environment:
       UI_USER: ${UI_USER:-admin}
       UI_PASSWORD: ${UI_PASSWORD:-}  # blank = the first person to open Beacon creates the admin on a setup page; when set it skips that page and always resets UI_USER's password
