@@ -346,14 +346,14 @@ const LISTS = {network: "devices", servers: "servers", apps: "apps"};  // the sc
 const SZ = {stat: [3, 2], chart: [4, 3], summary: [4, 3], list: [12, 8], app: [2, 2]};
 const CAT = {  // key: [menu group, label, tile type]
   "n.online": ["Network", "Devices online", "stat"], "n.clients": ["Network", "Clients", "stat"], "n.poe": ["Network", "PoE draw", "stat"],
-  "n.rx": ["Network", "Throughput received", "stat"], "n.tx": ["Network", "Throughput sent", "stat"], "n.cpu": ["Network", "Average CPU", "stat"],
+  "n.net": ["Network", "Throughput", "stat"], "n.cpu": ["Network", "Average CPU", "stat"],
   "n.mem": ["Network", "Average memory", "stat"], "n.load": ["Network", "Highest load", "stat"], "n.up": ["Network", "Longest uptime", "stat"],
   "n.c.net": ["Network charts", "Throughput", "chart"], "n.c.use": ["Network charts", "CPU and memory", "chart"],
   "n.c.clients": ["Network charts", "Clients", "chart"], "n.c.poe": ["Network charts", "PoE draw", "chart"],
   "s.online": ["Servers", "Servers online", "stat"], "s.avg": ["Servers", "Average ping", "stat"], "s.max": ["Servers", "Slowest ping", "stat"],
   "s.c.ping": ["Server charts", "Ping", "chart"], "a.count": ["Apps", "Apps", "stat"],
 };
-const SUMK = {network: ["n.online", "n.clients", "n.poe", "n.rx", "n.tx"], servers: ["s.online", "s.avg", "s.max"], apps: ["a.count"]};
+const SUMK = {network: ["n.online", "n.clients", "n.poe", "n.net"], servers: ["s.online", "s.avg", "s.max"], apps: ["a.count"]};
 const uid = () => Math.random().toString(36).slice(2, 8);
 const T = (type, ref, x, y, w, h) => ({id: uid(), type, ref, x, y, w, h});
 const DEF = {
@@ -443,7 +443,7 @@ const split = () => {
 };
 const STAT = {  // each returns [value or null, detail line]
   "n.online": () => [`${live().length} of ${DATA.devices.length}`], "n.clients": () => [sum(vals("clients")), split()],
-  "n.poe": () => [fm(W, sum(vals("poe")))], "n.rx": () => [fm(bps, sum(vals("rx")))], "n.tx": () => [fm(bps, sum(vals("tx")))],
+  "n.poe": () => [fm(W, sum(vals("poe")))], "n.net": m => { const r = sum(vals("rx")), s = sum(vals("tx")); return [fm(bps, m === "rx" ? r : m === "tx" ? s : r == null && s == null ? null : (r ?? 0) + (s ?? 0))]; },  // m: total (default), rx or tx
   "n.cpu": () => [fm(PC, avg(vals("cpu")))], "n.mem": () => [fm(PC, avg(vals("mem")))],
   "n.load": () => [fm(v => v.toFixed(2), mx(vals("load")))], "n.up": () => [fm(up, mx(vals("uptime")))],
   "s.online": () => [`${lat().filter(x => x.ms != null).length} of ${SERV.servers.length}`],
@@ -467,9 +467,10 @@ const CHART = {
   "n.c.poe": () => ({sets: [["PoE draw", "--blue", agg(NET(), "poe", "sum", iv)]], fmt: W}),
   "s.c.ping": () => ({sets: [["Average ping", "--blue", agg(SRV(), "ms", "avg", siv)]], fmt: MS}),
 };
-const tot = (key, dash) => {
-  const [v, d] = STAT[key]();
-  return v == null && !dash ? "" : `<div class="tot"><small>${CAT[key][1]}</small><b>${v ?? "–"}</b>${d ? `<small>${esc(d)}</small>` : ""}</div>`;
+const lbl = (key, mode) => key === "n.net" && mode in {rx: 1, tx: 1} ? (mode === "rx" ? "Throughput received" : "Throughput sent") : CAT[key][1];
+const tot = (key, dash, mode) => {
+  const [v, d] = STAT[key](mode);
+  return v == null && !dash ? "" : `<div class="tot"><small>${lbl(key, mode)}</small><b>${v ?? "–"}</b>${d ? `<small>${esc(d)}</small>` : ""}</div>`;
 };
 
 // ---- tiles ----
@@ -710,7 +711,7 @@ function build(t) {
   el.querySelector(".rs").onpointerdown = e => drag(e, t, el, "size");
   el.querySelector(".cf").onclick = () => { el.picking = true; update(t, el); };
   el.querySelector(".rm").onclick = () => remove(t);
-  if (t.type !== "app") el.querySelector(".cf").hidden = true;
+  if (t.type !== "app" && t.ref !== "n.net") el.querySelector(".cf").hidden = true;
   return el;
 }
 
@@ -728,8 +729,19 @@ function pickApp(t, el) {  // an app tile with no app yet (or being changed) sho
   if (s) s.onchange = () => { if (!s.value) return; t.ref = s.value; el.picking = false; el.psig = null; save(); renderGrid(); };
   el.body.querySelector(".x")?.addEventListener("click", () => { el.picking = false; el.psig = null; update(t, el); });
 }
+function pickMode(t, el) {  // the throughput tile's gear: show total, received or sent
+  if (el.psig === "mode") return;  // leave an open menu alone while data refreshes
+  el.psig = "mode"; const m = t.mode || "total";
+  el.body.innerHTML = `<div class="pick"><select aria-label="Throughput to show">${[["total", "Total"], ["rx", "Received"], ["tx", "Sent"]].map(([v, l]) => `<option value="${v}"${v === m ? " selected" : ""}>${l}</option>`).join("")}</select><button type="button" class="x">Cancel</button></div>`;
+  el.body.querySelector("select").onchange = e => { t.mode = e.target.value; el.picking = false; el.psig = null; save(); update(t, el); };
+  el.body.querySelector(".x").onclick = () => { el.picking = false; el.psig = null; update(t, el); };
+}
 function update(t, el) {
-  if (t.type === "stat") el.body.innerHTML = tot(t.ref, true), el.ttl.textContent = CAT[t.ref][1];
+  if (t.type === "stat") {
+    el.ttl.textContent = lbl(t.ref, t.mode);
+    if (t.ref === "n.net" && el.picking) return pickMode(t, el);
+    el.psig = null; el.body.innerHTML = tot(t.ref, true, t.mode);
+  }
   else if (t.type === "summary") { el.ttl.textContent = NAMES[t.ref]; el.body.innerHTML = `<div class="sum">${SUMK[t.ref].map(k => tot(k)).join("")}</div>`; }
   else if (t.type === "chart") {
     const sp = CHART[t.ref]();
@@ -777,7 +789,7 @@ function remove(t) {
 function fillAdd() {
   const list = tiles(), has = (ty, ref) => list.some(t => t.type === ty && t.ref === ref), groups = {};
   const add = (grp, v, l) => (groups[grp] ||= []).push([v, l]);
-  for (const [k, [grp, label, ty]] of Object.entries(CAT)) if (!has(ty, k)) add(grp, `${ty}:${k}`, label);
+  for (const [k, [grp, label, ty]] of Object.entries(CAT)) if (k === "n.net" || !has(ty, k)) add(grp, `${ty}:${k}`, label);  // throughput can be placed more than once, e.g. one sent and one received
   for (const r of ["network", "servers", "apps"]) if (!has("summary", r)) add("Overviews", `summary:${r}`, `${NAMES[r]} summary`);
   add("Apps", "app:", "App");  // one entry; the tile then asks which app to show
   $("#add").innerHTML = `<option value="">+ Add tile</option>` + Object.entries(groups).map(([gr, o]) => `<optgroup label="${esc(gr)}">${o.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join("")}</optgroup>`).join("");
@@ -910,10 +922,15 @@ function enter(u) {
   start();
 }
 function sane() {  // a hand-edited or damaged layout is cleaned up rather than allowed to break the page
+  const fix = t => {  // the old separate received/sent tiles become one throughput tile with a mode; an unknown mode is dropped
+    if (t && t.type === "stat" && (t.ref === "n.rx" || t.ref === "n.tx")) return {...t, ref: "n.net", mode: t.ref.slice(2)};
+    if (t && t.mode && !["total", "rx", "tx"].includes(t.mode)) { t = {...t}; delete t.mode; }
+    return t;
+  };
   const good = t => t && typeof t === "object" && (t.type === "app" || (t.type === "stat" && STAT[t.ref]) || (t.type === "chart" && CHART[t.ref]) || (t.type === "summary" && SUMK[t.ref]));
   const num = (v, lo, hi, d) => Number.isFinite(+v) ? Math.max(lo, Math.min(hi, Math.round(+v))) : d, seen = new Set();
   for (const k of TABS) {
-    D.tabs[k] = (Array.isArray(D.tabs[k]) ? D.tabs[k] : []).filter(good).map(t => {
+    D.tabs[k] = (Array.isArray(D.tabs[k]) ? D.tabs[k] : []).map(fix).filter(good).map(t => {
       let id = String(t.id || ""); if (!id || seen.has(k + id)) id = uid(); seen.add(k + id);
       const w = num(t.w, 1, COLS, 3);
       return {...t, id, w, h: num(t.h, 1, 40, 3), x: num(t.x, 0, COLS - w, 0), y: num(t.y, 0, 400, 0)};

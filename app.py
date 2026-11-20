@@ -527,8 +527,11 @@ def clean_tile(x):
         except (TypeError, ValueError):
             return d
     w = num("w", 1, 12, 3)
-    return {"id": str(x.get("id") or secrets.token_hex(3))[:16], "type": x["type"], "ref": str(x.get("ref", ""))[:40],
-            "x": num("x", 0, 12 - w, 0), "y": num("y", 0, 400, 0), "w": w, "h": num("h", 1, 40, 3)}
+    t = {"id": str(x.get("id") or secrets.token_hex(3))[:16], "type": x["type"], "ref": str(x.get("ref", ""))[:40],
+         "x": num("x", 0, 12 - w, 0), "y": num("y", 0, 400, 0), "w": w, "h": num("h", 1, 40, 3)}
+    if x.get("mode") in ("total", "rx", "tx"):  # the throughput tile: show total, received or sent
+        t["mode"] = x["mode"]
+    return t
 
 
 def clean_dash(d):  # whatever is sent, only well-formed tiles and apps are kept
