@@ -33,18 +33,20 @@ Your data lives in `./data`. Back that folder up. History is kept for 7 days by 
 
 ## Security notes
 
-- Sign-in uses a session cookie; five wrong passwords lock that address out for five minutes. Keep Beacon behind HTTPS if it is reachable from outside your network.
+- Sign-in uses a session cookie; by default five wrong passwords lock that address out for five minutes (Settings > Security changes the number, 1 to 20). Keep Beacon behind HTTPS if it is reachable from outside your network.
 - Guest access is off by default and is view-only.
-- SSH host keys are not verified yet: Beacon accepts whatever key a device presents. Keep it on a network you trust.
+- SSH host keys are pinned on first use: the first time Beacon connects to a device it remembers that device's key (in `./data/known_hosts`), and after that it refuses to connect if the key changes, so the shared password is never sent to an impostor. The first connection is trusted, so add devices on a network you trust. If you reset or replace a device, use Settings > Security > Forget SSH host keys to choose which devices to trust again.
+- The container starts as root only to make `./data` writable, then runs Beacon as an unprivileged user (ID 10001).
+- Changing a password has the same limit on wrong guesses, counted per person.
 - The shared SSH password never leaves the server.
 
 ## Updating
 
-Replace the files and run `docker compose up -d --build`. Settings > About shows the version.
+Replace the files (including the new `entrypoint.sh`) and run `docker compose up -d --build`. Settings > About shows the version. When upgrading from an earlier version, each device's SSH host key is remembered the first time it is polled after the update, and the files in `./data` are handed to the unprivileged user automatically.
 
 ## Tests
 
-`tests/` has the checks used before each release. `python3 tests/storage_test.py` needs only Flask and runs against a throwaway database with no real devices. `tests/ui_smoke.py` and `tests/ui_storage.py` drive a real browser through a simulated Beacon and need Playwright with Chromium (`pip install playwright && playwright install chromium`).
+`tests/` has the checks used before each release. `python3 tests/storage_test.py`, `tests/setup_test.py` and `tests/hostkey_test.py` need only Flask and runs against a throwaway database with no real devices. `tests/ui_smoke.py` and `tests/ui_storage.py` drive a real browser through a simulated Beacon and need Playwright with Chromium (`pip install playwright && playwright install chromium`).
 
 ## Icons
 

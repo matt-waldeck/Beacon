@@ -1,4 +1,4 @@
-import functools, hashlib, json, os, queue, re, secrets, shutil, sqlite3, subprocess, threading, time, urllib.error, urllib.parse, urllib.request
+import base64, functools, hashlib, json, os, queue, re, secrets, shutil, sqlite3, subprocess, threading, time, urllib.error, urllib.parse, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 import paramiko
@@ -7,7 +7,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 
 DATA = os.environ.get("DATA_DIR", "/data")
-VERSION = "1.0.0-rc2"
+VERSION = "1.0.0"
 DEFAULT_REPO = os.environ.get("GITHUB_REPO") or "matt-waldeck/beacon"  # where the Feedback page sends people
 CFG, SET, DB, DEV, SRV = (os.path.join(DATA, n) for n in ("config.json", "settings.json", "stats.db", "devices.json", "servers.json"))
 # Read-only /proc reads work on every UniFi device; mca-dump adds model/firmware/client count where present.
@@ -87,10 +87,17 @@ def devices():
     return items("devices")
 
 
+def whole(v, default, lo, hi):  # a hand-edited or damaged setting falls back to its default instead of breaking every request
+    try:
+        return max(lo, min(hi, int(v)))
+    except (TypeError, ValueError):
+        return default
+
+
 def conf():
     s = read_json(SET, {})
     s = s if isinstance(s, dict) else {}
-    return {"interval": s.get("interval", cfg().get("interval", 30)), "server_interval": s.get("server_interval", 15), "guest": bool(s.get("guest", False)), "idle_minutes": int(s.get("idle_minutes", 10)), "repo": str(s.get("repo", "")), "retention_days": s.get("retention_days"), "icon_source": s.get("icon_source") if s.get("icon_source") in ICON_SOURCES else DEFAULT_ICONS}
+    return {"interval": whole(s.get("interval", cfg().get("interval", 30)), 30, 5, 3600), "server_interval": whole(s.get("server_interval", 15), 15, 5, 3600), "guest": bool(s.get("guest", False)), "idle_minutes": whole(s.get("idle_minutes", 10), 10, 0, 1440), "max_attempts": whole(s.get("max_attempts", 5), 5, 1, 20), "repo": str(s.get("repo", "")), "retention_days": s.get("retention_days"), "icon_source": s.get("icon_source") if s.get("icon_source") in ICON_SOURCES else DEFAULT_ICONS}
 
 
 def interval():
@@ -166,11 +173,33 @@ def long_pings(name, mins):
     return out + ([{"ts": last[0][0], "ms": last[0][1], "max": last[0][1], "n": 1, "d": int(last[0][1] is None)}] if last else [])
 
 
+KNOWN_HOSTS, hklock = os.path.join(DATA, "known_hosts"), threading.Lock()
+
+
+class TrustFirst(paramiko.MissingHostKeyPolicy):
+    """Trust a device the first time it is seen and remember its key; after that only that key is accepted."""
+    def missing_host_key(self, client, hostname, key):
+        with hklock:  # several devices are polled at once; each one re-reads the file so no addition is lost
+            hk = paramiko.HostKeys()
+            if os.path.exists(KNOWN_HOSTS):
+                hk.load(KNOWN_HOSTS)
+            old = hk.lookup(hostname)
+            if old:  # already known under another key type: a mismatch, not a first visit
+                raise paramiko.BadHostKeyException(hostname, key, next(iter(old.values())))
+            hk.add(hostname, key.get_name(), key)
+            hk.save(KNOWN_HOSTS)
+            os.chmod(KNOWN_HOSTS, 0o600)
+        client._host_keys.add(hostname, key.get_name(), key)  # lets this connection carry on
+
+
 def ssh_run(d):
     if "user" not in d:
         raise ValueError("No SSH user set: use SSH_USER or the ssh block in config.json.")
     c = paramiko.SSHClient()
-    c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    with hklock:
+        if os.path.exists(KNOWN_HOSTS):
+            c.load_host_keys(KNOWN_HOSTS)
+    c.set_missing_host_key_policy(TrustFirst())
     c.connect(d["host"], port=d.get("port", 22), username=d["user"], password=d.get("password"),
               key_filename=d.get("key_file"), timeout=8, look_for_keys=False, allow_agent=False)
     try:
@@ -225,6 +254,8 @@ def poll(d):
         r = parse(ssh_run(d), d)
     except (KeyError, IndexError):
         r = {"ts": time.time(), "error": "Unexpected reply from the device. Is it a UniFi (Linux) device?"}
+    except paramiko.BadHostKeyException:  # nothing was sent: the password is only offered once the key is accepted
+        r = {"ts": time.time(), "error": "The device's SSH host key has changed, so Beacon did not connect. If you reset or updated the device, use Settings > About > Forget SSH host keys."}
     except Exception as e:
         r = {"ts": time.time(), "error": str(e)[:200]}
     save_sample(d["name"], r)
@@ -288,6 +319,8 @@ def set_settings():
             s["idle_minutes"] = max(0, min(1440, int(j["idle_minutes"])))  # 0 = never sign out
         if "retention_days" in j:
             s["retention_days"] = max(1, min(365, int(j["retention_days"])))
+        if "max_attempts" in j:  # wrong passwords allowed in five minutes before a lock-out
+            s["max_attempts"] = max(1, min(20, int(j["max_attempts"])))
     except (TypeError, ValueError):
         return bad("Enter a whole number.")
     if "guest" in j:
@@ -408,6 +441,7 @@ def who():
     return None
 
 
+ADMIN_GET = ("/api/users", "/api/storage", "/api/hostkeys", "/api/security")  # reading these needs an admin
 PASSIVE = {"/api/data", "/api/servers"}  # background polling: does not count as someone using the page
 OPEN = {("GET", "/vendor/chart.umd.min.js"), ("GET", "/"), ("GET", "/healthz"), ("GET", "/api/me"), ("GET", "/api/brand"), ("POST", "/api/login"), ("POST", "/api/setup")}
 
@@ -421,7 +455,7 @@ def guard():
     if not me:
         exp = bool(g.get("expired"))
         return jsonify(error="You were signed out after a period of inactivity." if exp else "Please sign in.", expired=exp), 401
-    need = 1 if p in ("/api/logout", "/api/me/password", "/api/activity") or (m == "GET" and p not in ("/api/users", "/api/storage")) else 2 if (m, p) in (("PUT", "/api/dash"), ("POST", "/api/icon/resolve")) else 3
+    need = 1 if p in ("/api/logout", "/api/me/password", "/api/activity") or (m == "GET" and p not in ADMIN_GET) else 2 if (m, p) in (("PUT", "/api/dash"), ("POST", "/api/icon/resolve")) else 3
     if LEVEL[me["role"]] < need:
         return jsonify(error="You don't have permission to do that."), 403
     if session.get("u") and not (m == "GET" and p in PASSIVE) and time.time() - session.get("t", 0) > 15:
@@ -572,6 +606,15 @@ def me():
     return jsonify(user=who(), setup=needs_setup(), guest=conf()["guest"], auth=not AUTH_OFF, version=VERSION, idle=conf()["idle_minutes"], icons=conf()["icon_source"], remember=bool(session.get("r")), repo=conf()["repo"] or DEFAULT_REPO)
 
 
+def recent_fails(key):  # failed attempts in the last five minutes for an address (sign-in) or a name (password change)
+    now = time.time()
+    if len(fails) > 500:  # forget keys with no recent failures
+        for k in [k for k, v in fails.items() if not [t for t in v if now - t < 300]]:
+            del fails[k]
+    fails[key] = [t for t in fails.get(key, []) if now - t < 300]
+    return fails[key]
+
+
 @app.post("/api/login")
 def login():
     j = request.get_json(silent=True) or {}
@@ -581,12 +624,9 @@ def login():
         session.clear()
         session["g"], session.permanent = 1, True
         return jsonify(ok=True)
-    ip, now = request.remote_addr, time.time()
-    if len(fails) > 500:  # forget clients with no recent failures
-        for k in [k for k, v in fails.items() if not [t for t in v if now - t < 300]]:
-            del fails[k]
-    recent = fails[ip] = [t for t in fails.get(ip, []) if now - t < 300]
-    if len(recent) >= 5:
+    now = time.time()
+    recent = recent_fails(request.remote_addr)
+    if len(recent) >= conf()["max_attempts"]:
         return bad("Too many attempts. Try again in a few minutes.", 429)
     name = str(j.get("name", "")).strip().lower()
     u = next((x for x in users() if x["name"].lower() == name), None)
@@ -632,7 +672,11 @@ def change_password():
     u = next((x for x in lst if x["name"] == who()["name"]), None)
     if not u:
         return bad("Guests can't change a password.", 403)
+    recent = recent_fails("pw:" + u["name"])  # guessing the current password is limited like signing in
+    if len(recent) >= conf()["max_attempts"]:
+        return bad("Too many attempts. Try again in a few minutes.", 429)
     if not check_password_hash(u["hash"], str(j.get("current", ""))):
+        recent.append(time.time())
         return bad("Current password is wrong.")
     if len(str(j.get("new", ""))) < 8:
         return bad("Use at least 8 characters.")
@@ -809,13 +853,17 @@ def fetch(url, limit=400_000):  # (bytes, None), or (None, "missing" | "network"
         return None, "network"
 
 
+UNSAFE_SVG = re.compile(rb"<script|<foreignobject|<iframe|<embed|<object|<!entity|javascript:|\bon[a-z]+\s*=")  # scripts, embedded pages and event handlers never belong in an icon
+
+
 def image_kind(data):  # what the bytes really are, or None when they aren't a safe image
     for sig, kind in SIGNATURES.items():
         if data.startswith(sig):
             return kind
     if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
         return "webp"
-    if data[:600].lstrip().lower().startswith((b"<svg", b"<?xml")) and b"<svg" in data[:2000].lower() and b"<script" not in data.lower():
+    low = data.lower()
+    if data[:600].lstrip().lower().startswith((b"<svg", b"<?xml")) and b"<svg" in data[:2000].lower() and not UNSAFE_SVG.search(low):
         return "svg"
     return None
 
@@ -901,7 +949,9 @@ def get_icon():
     name = request.args.get("name", "")[:100]
     p = icon_path(norm(name))
     if not p:
-        queue_icon(name)
+        d = read_json(os.path.join(DATA, "dash.json"), {})  # only apps on the Apps page are looked up, so nobody can make the server fetch or store arbitrary names
+        if isinstance(d, dict) and norm(name) in {norm(a.get("name", "")) for a in (d.get("apps") or {}).values() if isinstance(a, dict)}:
+            queue_icon(name)
         return bad("No icon yet.", 404)
     r = send_file(p, mimetype=MIME[p.rsplit(".", 1)[1]])
     r.headers["Cache-Control"] = "private, max-age=86400"
@@ -938,6 +988,66 @@ def storage():  # admin: how much room the history and the icon cache take
     return jsonify(db={"bytes": db, "reusable": reusable, "samples": n_s, "pings": n_p, "since": min(firsts) if firsts else None},
                    icons={"bytes": sum(os.path.getsize(f) for f in files), "count": len([f for f in files if f.rsplit(".", 1)[-1] in MIME])},
                    data={"bytes": folder_size(DATA)}, disk={"free": disk.free, "total": disk.total}, retention_days=retention())
+
+
+def known_keys():  # [(hostname, key type, base64 key)] as stored in known_hosts
+    if not os.path.exists(KNOWN_HOSTS):
+        return []
+    with open(KNOWN_HOSTS) as f:
+        return [tuple(p[:3]) for p in (line.split() for line in f if not line.startswith("#")) if len(p) >= 3]
+
+
+def fingerprint(b64):  # the usual SHA256:... form shown by ssh
+    try:
+        return "SHA256:" + base64.b64encode(hashlib.sha256(base64.b64decode(b64)).digest()).decode().rstrip("=")
+    except ValueError:
+        return ""
+
+
+@app.get("/api/hostkeys")
+def list_hostkeys():  # admin: the SSH keys Beacon has pinned, matched to your devices by address
+    names = {}
+    for d in devices():
+        names.setdefault(d["host"], d["name"])
+    with hklock:
+        rows = known_keys()
+    out = [{"host": h, "name": names.get(h[1:].split("]")[0] if h.startswith("[") else h, ""), "type": t, "fingerprint": fingerprint(k)} for h, t, k in rows]
+    return jsonify(keys=sorted(out, key=lambda x: (not x["name"], (x["name"] or x["host"]).lower())))  # your devices first, then keys for addresses no longer in the list
+
+
+@app.post("/api/hostkeys/forget")
+@locked
+def forget_hostkeys():  # admin: those devices are trusted again the next time they are polled
+    j = request.get_json(silent=True) or {}
+    everyone, hosts = j.get("all") is True, j.get("hosts")
+    if not everyone and not (isinstance(hosts, list) and hosts and all(isinstance(h, str) for h in hosts)):
+        return bad("Choose at least one device.")
+    with hklock:
+        if not os.path.exists(KNOWN_HOSTS):
+            return jsonify(ok=True, removed=0)
+        with open(KNOWN_HOSTS) as f:
+            lines = f.read().splitlines()
+        keep, removed = [], 0
+        for line in lines:
+            p = line.split()
+            if len(p) >= 3 and not line.startswith("#") and (everyone or p[0] in hosts):
+                removed += 1
+            else:
+                keep.append(line)
+        if any(len(l.split()) >= 3 and not l.startswith("#") for l in keep):
+            tmp = KNOWN_HOSTS + ".tmp"
+            with open(tmp, "w") as f:
+                f.write("\n".join(keep) + "\n")
+            os.chmod(tmp, 0o600)
+            os.replace(tmp, KNOWN_HOSTS)
+        else:
+            os.remove(KNOWN_HOSTS)
+    return jsonify(ok=True, removed=removed)
+
+
+@app.get("/api/security")
+def security():  # admin: the values the Security page shows
+    return jsonify(max_attempts=conf()["max_attempts"])
 
 
 @app.post("/api/storage/purge")
