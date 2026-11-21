@@ -13,7 +13,8 @@ ARG CHARTJS_VERSION=4.4.0
 ARG CHARTJS_SRI=sha384-FcQlsUOd0TJjROrBxhJdUhXTUgNJQxTMcxZe6nHbaEfFL1zjQ+bq/uRoBQxb0KMo
 RUN mkdir -p vendor && (python -c "import base64, hashlib, sys, urllib.request as u; d = u.urlopen('https://cdn.jsdelivr.net/npm/chart.js@${CHARTJS_VERSION}/dist/chart.umd.js', timeout=30).read(); h = 'sha384-' + base64.b64encode(hashlib.sha384(d).digest()).decode(); sys.exit('checksum mismatch: got ' + h) if h != '${CHARTJS_SRI}' else open('vendor/chart.umd.min.js', 'wb').write(d)" || echo "WARNING: Chart.js was not bundled (download failed or checksum mismatch); the page will use the CDN or the built-in charts")
 COPY app.py index.html entrypoint.sh ./
-RUN chmod 755 /app/entrypoint.sh
+# COPY keeps the permissions the files have on the host; make sure the unprivileged user can read everything, whatever they were
+RUN chmod -R a+rX /app && chmod 755 /app/entrypoint.sh
 ENV DATA_DIR=/data
 VOLUME /data
 EXPOSE 8080
