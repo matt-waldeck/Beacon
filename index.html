@@ -113,6 +113,10 @@ dialog::backdrop{background:rgba(0,0,0,.28);backdrop-filter:blur(4px)}
 @media(max-width:640px){dialog[open]{grid-template-columns:1fr;grid-template-rows:auto 1fr}#sn{flex-direction:row;overflow:auto;border-right:0;border-bottom:1px solid var(--rule);padding:.6rem}.ur{grid-template-columns:1fr 1fr}}
 body.listy main{height:100vh;height:100dvh;overflow:auto;display:flex;flex-direction:column;padding-bottom:1rem}
 body.listy #grid{flex:none}
+#ov{display:none}body.listy #ov{display:block;flex:none}
+.tile.ov{flex-direction:row;flex-wrap:wrap;align-items:center;gap:.75rem 2.5rem;padding:.9rem 1.5rem}
+.ovs{display:grid;grid-auto-flow:column;gap:.75rem 2.5rem;flex:none}
+.ovc{flex:1 1 260px;min-width:0;height:116px;position:relative}
 #lpanel{display:none}body.listy #lpanel{display:flex;flex:1 0 18rem;min-height:0;margin-top:12px}
 #lpanel>.tile{flex:1;min-width:0}
 .tile.list .items{flex:1;min-height:0;overflow:auto}
@@ -157,6 +161,7 @@ body:not(.r-admin) .adm{display:none}body:not(.r-admin):not(.r-user) .edt{displa
 @media(max-width:700px){
 #grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(60px,auto)}
 .t-chart{min-height:220px}
+.tile.ov{padding:.8rem 1rem}.ovs{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;gap:.6rem 1rem}.ovc{flex-basis:100%;height:120px}
 h1{order:1}.ctl{order:2;margin-left:auto}nav{order:3;flex-basis:100%}
 #grid .tile{grid-column:auto / span var(--m,1)!important;grid-row:auto / span var(--h,3)!important}
 #edit,#stamp{display:none!important}
@@ -170,11 +175,11 @@ nav button{position:relative;z-index:1}
 #pill.on{transition:left .4s cubic-bezier(.34,1.3,.64,1),width .4s cubic-bezier(.34,1.3,.64,1),opacity .2s}
 [data-style=stark] #pill{box-shadow:0 0 12px color-mix(in srgb,var(--blue) 45%,transparent),inset 0 0 0 1px var(--blue)}
 /* tile hover effect, chosen in Settings: none, glow (in the style's own colour) or bounce */
-#grid .tile{transition:translate .35s cubic-bezier(.34,1.56,.64,1),rotate .35s cubic-bezier(.34,1.56,.64,1),box-shadow .25s}
-[data-hover=glow] #grid .tile:hover{box-shadow:var(--sh),0 0 0 2px color-mix(in srgb,var(--edge,var(--blue)) 70%,transparent),0 0 26px 3px color-mix(in srgb,var(--edge,var(--blue)) 55%,transparent)}
-[data-hover=bounce] #grid .tile:hover{translate:0 -4px;rotate:-.5deg}
+#grid .tile,#ov .tile{transition:translate .35s cubic-bezier(.34,1.56,.64,1),rotate .35s cubic-bezier(.34,1.56,.64,1),box-shadow .25s}
+[data-hover=glow] #grid .tile:hover,[data-hover=glow] #ov .tile:hover{box-shadow:var(--sh),0 0 0 2px color-mix(in srgb,var(--edge,var(--blue)) 70%,transparent),0 0 26px 3px color-mix(in srgb,var(--edge,var(--blue)) 55%,transparent)}
+[data-hover=bounce] #grid .tile:hover,[data-hover=bounce] #ov .tile:hover{translate:0 -4px;rotate:-.5deg}
 [data-hover=bounce] #grid .tile:nth-child(even):hover{rotate:.5deg}
-.editing #grid .tile:hover{translate:none!important;rotate:none!important;box-shadow:var(--sh)!important}
+.editing #grid .tile:hover,.editing #ov .tile:hover{translate:none!important;rotate:none!important;box-shadow:var(--sh)!important}
 /* polish shared by every style */
 button:not(.lr):not(nav button){transition:scale .12s}
 button:not(.lr):not(nav button):active{scale:.97}
@@ -186,7 +191,7 @@ dialog[open]::backdrop{animation:fade .25s}
 @keyframes fade{from{opacity:0}}
 *{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--mute) 45%,transparent) transparent}
 ::selection{background:color-mix(in srgb,var(--blue) 28%,transparent)}
-@media(prefers-reduced-motion:reduce){dialog[open],dialog[open]::backdrop{animation:none}[data-hover=bounce] #grid .tile:hover{translate:none;rotate:none}}
+@media(prefers-reduced-motion:reduce){dialog[open],dialog[open]::backdrop{animation:none}[data-hover=bounce] #grid .tile:hover,[data-hover=bounce] #ov .tile:hover{translate:none;rotate:none}}
 .tile.list .lh .hs{border:0;background:none;padding:0;box-shadow:none;border-radius:0;color:inherit;font:inherit;text-transform:inherit;letter-spacing:inherit;text-align:left;cursor:pointer}
 .tile.list .lh .hs:hover{color:var(--ink)}.lh .hs i{font-style:normal;color:var(--blue)}
 .uw{position:relative}.menu.sm{width:13rem}
@@ -221,7 +226,7 @@ textarea{font:inherit;padding:.5rem .65rem;border:1px solid var(--rule);border-r
 [data-style=stark] ::selection{background:rgba(25,211,255,.3);color:#fff}
 [data-style=stark] *{scrollbar-color:rgba(25,211,255,.4) transparent}
 [data-style=stark] .tile::before,[data-style=stark] .tile::after{transition:width .2s,height .2s}
-[data-hover=glow][data-style=stark] #grid .tile:hover::before,[data-hover=glow][data-style=stark] #grid .tile:hover::after{width:22px;height:22px}
+[data-hover=glow][data-style=stark] #grid .tile:hover::before,[data-hover=glow][data-style=stark] #grid .tile:hover::after,[data-hover=glow][data-style=stark] #ov .tile:hover::before,[data-hover=glow][data-style=stark] #ov .tile:hover::after{width:22px;height:22px}
 @media(prefers-reduced-motion:reduce){[data-style=stark] *{animation:none!important}}
 </style></head>
 <body class="booting"><main>
@@ -313,6 +318,7 @@ textarea{font:inherit;padding:.5rem .65rem;border:1px solid var(--rule);border-r
 <span id="sferr" class="err" role="alert"></span><button class="pri">Create account</button></form></div>
 <p id="none" class="mute" hidden></p>
 <div id="grid"></div>
+<div id="ov"></div>
 <div id="lpanel"></div>
 </main>
 <script src="/vendor/chart.umd.min.js"></script>
@@ -371,8 +377,10 @@ const uid = () => Math.random().toString(36).slice(2, 8);
 const T = (type, ref, x, y, w, h) => ({id: uid(), type, ref, x, y, w, h});
 const DEF = {
   home: () => [T("summary", "network", 0, 0, 6, 3), T("summary", "servers", 6, 0, 3, 3), T("summary", "apps", 9, 0, 3, 3)],
-  network: () => [T("stat", "n.online", 0, 0, 3, 3), T("stat", "n.clients", 3, 0, 3, 3), T("chart", "n.c.net", 6, 0, 3, 3), T("stat", "n.poe", 9, 0, 3, 3)],
-  servers: () => [T("stat", "s.online", 0, 0, 3, 3), T("stat", "s.avg", 3, 0, 3, 3), T("stat", "s.max", 6, 0, 3, 3), T("chart", "s.c.ping", 9, 0, 3, 3)],
+};
+const OV = {  // Network and Servers: one fixed overview panel above the list (not part of the tile grid, not configurable)
+  network: {stats: ["n.online", "n.clients", "n.poe"], chart: "n.c.net"},
+  servers: {stats: ["s.online", "s.avg", "s.max"], chart: "s.c.ping"},
 };
 let D = {}, DATA = {devices: []}, SERV = {servers: []}, tab = "home", edit = false, iv = 30, siv = 15, timer, stimer, st, bandsOn = false;
 const els = {}, lists = {};
@@ -779,6 +787,21 @@ function kill(k, x) {  // remove tile x from tab k
   if (els[k + x.id]) { wipe(els[k + x.id]); delete els[k + x.id]; }
   D.tabs[k] = D.tabs[k].filter(y => y !== x);
 }
+function renderOv() {  // the single overview panel on Network and Servers
+  const box = $("#ov"), o = OV[tab];
+  if (!o) return box.replaceChildren();
+  const sp = CHART[o.chart]();
+  let el = els["ov." + tab];
+  if (!el) {
+    el = els["ov." + tab] = document.createElement("section");
+    el.className = "tile ov";
+    el.innerHTML = `<div class="ovs"></div><div class="ovc"><canvas></canvas></div>`;
+    el.charts = [mk(el.querySelector("canvas"), sp.sets.map(([l, c]) => [l, g(c)]), sp.max, sp.fmt)];
+  }
+  if (el.parentNode !== box) box.replaceChildren(el);
+  el.querySelector(".ovs").innerHTML = o.stats.map(k => tot(k, true)).join("");
+  upd(el.charts[0], sp.sets[0][2].map(p => lab(p.ts)), ...sp.sets.map(s => s[2].map(p => p.v)));
+}
 function renderGrid() {
   const gr = $("#grid"), list = tiles(), keep = new Set(list.map(t => tab + t.id));
   gr.querySelectorAll(".tile").forEach(c => keep.has(c.dataset.k) || c.remove());
@@ -791,6 +814,7 @@ function renderGrid() {
     update(t, el);
   });
   $("#none").hidden = list.length > 0 || !!LISTS[tab];
+  renderOv();
   if (LISTS[tab]) renderList(LISTS[tab]);
   $("#none").textContent = "Nothing here yet. Choose Edit layout, then + Add tile.";
 }
@@ -806,7 +830,7 @@ function fillAdd() {
   for (const r of ["network", "servers", "apps"]) if (!has("summary", r)) add("Overviews", `summary:${r}`, `${NAMES[r]} summary`);
   add("Apps", "app:", "App");  // one entry; the tile then asks which app to show
   $("#add").innerHTML = `<option value="">+ Add tile</option>` + Object.entries(groups).map(([gr, o]) => `<optgroup label="${esc(gr)}">${o.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join("")}</optgroup>`).join("");
-  $("#add").hidden = !edit || tab === "apps";
+  $("#add").hidden = !edit || !!LISTS[tab];
 }
 $("#add").onchange = e => {
   const v = e.target.value, i = v.indexOf(":"), type = v.slice(0, i); e.target.value = "";
@@ -854,10 +878,10 @@ function setTab(k) {
   movePill();
   const lk = LISTS[tab];
   document.body.classList.toggle("listy", !!lk);
-  $("#grid").hidden = tab === "apps";
+  $("#grid").hidden = !!lk;
   if (lk) { lists[lk] ||= buildList(lk); $("#lpanel").replaceChildren(lists[lk]); } else $("#lpanel").replaceChildren();
-  if (tab === "apps" && edit) $("#edit").click();  // nothing to arrange on Apps, so leave edit mode
-  $("#edit").hidden = !can(2) || tab === "apps";
+  if (lk && edit) $("#edit").click();  // nothing to arrange on the list pages, so leave edit mode
+  $("#edit").hidden = !can(2) || !!lk;
   renderGrid(); fillAdd();
 }
 function applyTheme(rebuild) {
@@ -913,7 +937,7 @@ function stop() {
   clearTimeout(timer); clearTimeout(stimer);
   for (const k in els) { wipe(els[k]); delete els[k]; }
   for (const k in lists) { wipe(lists[k]); delete lists[k]; }
-  $("#grid").innerHTML = ""; $("#lpanel").innerHTML = ""; D = {}; DATA = {devices: []}; SERV = {servers: []};
+  $("#grid").innerHTML = ""; $("#ov").innerHTML = ""; $("#lpanel").innerHTML = ""; D = {}; DATA = {devices: []}; SERV = {servers: []};
 }
 function splash(msg) {  // the sign-in screen
   ME = null; stop();
@@ -958,10 +982,8 @@ async function start() {
   D.apps ||= {}; D.tabs ||= {};
   TABS.forEach(k => D.tabs[k] ||= DEF[k] ? DEF[k]() : []);
   sane();
-  if (D.v !== "0.3") {  // 0.3: the device and server lists leave the grid, and Apps becomes a plain list
-    if (!D.v) { D.tabs.network = DEF.network(); D.tabs.servers = DEF.servers(); }  // 0.1 per-device tiles are replaced
-    for (const k of ["network", "servers"]) { D.tabs[k] = D.tabs[k].filter(t => t.type !== "list"); place(D.tabs[k]); }
-    D.tabs.apps = []; D.v = "0.3"; save();
+  if (D.v !== "1.0") {  // 1.0: Network and Servers get a fixed overview panel instead of tiles; Apps is a plain list
+    D.tabs.network = []; D.tabs.servers = []; D.tabs.apps = []; D.v = "1.0"; save();
   } else if (fresh) save();
   bandsOn = lsGet("bands") === "1"; $("#bands").checked = bandsOn;
   const rg = lsGet("range"); if (rg && [...$("#range").options].some(o => o.value === rg)) $("#range").value = rg;
