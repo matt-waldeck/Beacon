@@ -98,6 +98,7 @@ h1{display:flex;align-items:center;gap:.5rem}
 .av{display:grid;place-items:center;width:1.6rem;height:1.6rem;border-radius:50%;background:var(--blue);color:var(--on-blue);font-style:normal;font-size:.8rem;font-weight:600}
 dialog{padding:0;border:1px solid var(--rule);border-radius:var(--r);color:var(--ink);background:color-mix(in srgb,var(--field) 80%,transparent);backdrop-filter:blur(40px) saturate(180%);-webkit-backdrop-filter:blur(40px) saturate(180%);box-shadow:var(--sh);width:min(780px,94vw);height:min(620px,90vh);overflow:hidden}
 dialog[open]{display:grid;grid-template-columns:11.5rem 1fr}
+#kd{width:min(480px,94vw);height:auto;max-height:85vh;overflow:auto}#kd[open]{display:block}.kb{padding:1.2rem 1.4rem}.kr{display:flex;gap:.7rem;align-items:flex-start;padding:.5rem 0;border-bottom:1px solid var(--rule);cursor:pointer}.kr input{margin-top:.25rem}.kr small{display:block;opacity:.7;overflow-wrap:anywhere}#klist{max-height:40vh;overflow:auto}
 dialog::backdrop{background:rgba(0,0,0,.28);backdrop-filter:blur(4px)}
 #sn{display:flex;flex-direction:column;gap:2px;padding:1rem .75rem;border-right:1px solid var(--rule)}
 #sn button{text-align:left;border:0;background:none;color:var(--mute)}#sn button[aria-current=true]{background:color-mix(in srgb,var(--blue) 16%,transparent);color:var(--ink)}
@@ -112,6 +113,10 @@ dialog::backdrop{background:rgba(0,0,0,.28);backdrop-filter:blur(4px)}
 @media(max-width:640px){dialog[open]{grid-template-columns:1fr;grid-template-rows:auto 1fr}#sn{flex-direction:row;overflow:auto;border-right:0;border-bottom:1px solid var(--rule);padding:.6rem}.ur{grid-template-columns:1fr 1fr}}
 body.listy main{height:100vh;height:100dvh;overflow:auto;display:flex;flex-direction:column;padding-bottom:1rem}
 body.listy #grid{flex:none}
+#ov{display:none}body.listy #ov{display:block;flex:none}
+.tile.ov{flex-direction:row;flex-wrap:wrap;align-items:center;gap:.75rem 2.5rem;padding:.9rem 1.5rem}
+.ovs{display:grid;grid-auto-flow:column;gap:.75rem 2.5rem;flex:none}
+.ovc{flex:1 1 260px;min-width:0;height:116px;position:relative}
 #lpanel{display:none}body.listy #lpanel{display:flex;flex:1 0 18rem;min-height:0;margin-top:12px}
 #lpanel>.tile{flex:1;min-width:0}
 .tile.list .items{flex:1;min-height:0;overflow:auto}
@@ -156,6 +161,7 @@ body:not(.r-admin) .adm{display:none}body:not(.r-admin):not(.r-user) .edt{displa
 @media(max-width:700px){
 #grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(60px,auto)}
 .t-chart{min-height:220px}
+.tile.ov{padding:.8rem 1rem}.ovs{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;gap:.6rem 1rem}.ovc{flex-basis:100%;height:120px}
 h1{order:1}.ctl{order:2;margin-left:auto}nav{order:3;flex-basis:100%}
 #grid .tile{grid-column:auto / span var(--m,1)!important;grid-row:auto / span var(--h,3)!important}
 #edit,#stamp{display:none!important}
@@ -169,11 +175,11 @@ nav button{position:relative;z-index:1}
 #pill.on{transition:left .4s cubic-bezier(.34,1.3,.64,1),width .4s cubic-bezier(.34,1.3,.64,1),opacity .2s}
 [data-style=stark] #pill{box-shadow:0 0 12px color-mix(in srgb,var(--blue) 45%,transparent),inset 0 0 0 1px var(--blue)}
 /* tile hover effect, chosen in Settings: none, glow (in the style's own colour) or bounce */
-#grid .tile{transition:translate .35s cubic-bezier(.34,1.56,.64,1),rotate .35s cubic-bezier(.34,1.56,.64,1),box-shadow .25s}
-[data-hover=glow] #grid .tile:hover{box-shadow:var(--sh),0 0 0 2px color-mix(in srgb,var(--edge,var(--blue)) 70%,transparent),0 0 26px 3px color-mix(in srgb,var(--edge,var(--blue)) 55%,transparent)}
-[data-hover=bounce] #grid .tile:hover{translate:0 -4px;rotate:-.5deg}
+#grid .tile,#ov .tile{transition:translate .35s cubic-bezier(.34,1.56,.64,1),rotate .35s cubic-bezier(.34,1.56,.64,1),box-shadow .25s}
+[data-hover=glow] #grid .tile:hover,[data-hover=glow] #ov .tile:hover{box-shadow:var(--sh),0 0 0 2px color-mix(in srgb,var(--edge,var(--blue)) 70%,transparent),0 0 26px 3px color-mix(in srgb,var(--edge,var(--blue)) 55%,transparent)}
+[data-hover=bounce] #grid .tile:hover,[data-hover=bounce] #ov .tile:hover{translate:0 -4px;rotate:-.5deg}
 [data-hover=bounce] #grid .tile:nth-child(even):hover{rotate:.5deg}
-.editing #grid .tile:hover{translate:none!important;rotate:none!important;box-shadow:var(--sh)!important}
+.editing #grid .tile:hover,.editing #ov .tile:hover{translate:none!important;rotate:none!important;box-shadow:var(--sh)!important}
 /* polish shared by every style */
 button:not(.lr):not(nav button){transition:scale .12s}
 button:not(.lr):not(nav button):active{scale:.97}
@@ -185,7 +191,7 @@ dialog[open]::backdrop{animation:fade .25s}
 @keyframes fade{from{opacity:0}}
 *{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--mute) 45%,transparent) transparent}
 ::selection{background:color-mix(in srgb,var(--blue) 28%,transparent)}
-@media(prefers-reduced-motion:reduce){dialog[open],dialog[open]::backdrop{animation:none}[data-hover=bounce] #grid .tile:hover{translate:none;rotate:none}}
+@media(prefers-reduced-motion:reduce){dialog[open],dialog[open]::backdrop{animation:none}[data-hover=bounce] #grid .tile:hover,[data-hover=bounce] #ov .tile:hover{translate:none;rotate:none}}
 .tile.list .lh .hs{border:0;background:none;padding:0;box-shadow:none;border-radius:0;color:inherit;font:inherit;text-transform:inherit;letter-spacing:inherit;text-align:left;cursor:pointer}
 .tile.list .lh .hs:hover{color:var(--ink)}.lh .hs i{font-style:normal;color:var(--blue)}
 .uw{position:relative}.menu.sm{width:13rem}
@@ -220,7 +226,7 @@ textarea{font:inherit;padding:.5rem .65rem;border:1px solid var(--rule);border-r
 [data-style=stark] ::selection{background:rgba(25,211,255,.3);color:#fff}
 [data-style=stark] *{scrollbar-color:rgba(25,211,255,.4) transparent}
 [data-style=stark] .tile::before,[data-style=stark] .tile::after{transition:width .2s,height .2s}
-[data-hover=glow][data-style=stark] #grid .tile:hover::before,[data-hover=glow][data-style=stark] #grid .tile:hover::after{width:22px;height:22px}
+[data-hover=glow][data-style=stark] #grid .tile:hover::before,[data-hover=glow][data-style=stark] #grid .tile:hover::after,[data-hover=glow][data-style=stark] #ov .tile:hover::before,[data-hover=glow][data-style=stark] #ov .tile:hover::after{width:22px;height:22px}
 @media(prefers-reduced-motion:reduce){[data-style=stark] *{animation:none!important}}
 </style></head>
 <body class="booting"><main>
@@ -240,17 +246,26 @@ textarea{font:inherit;padding:.5rem .65rem;border:1px solid var(--rule);border-r
 <label>Mode <select id="theme"><option value="auto">Auto</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
 <label>Hover effect <select id="hover"><option value="none">None</option><option value="glow">Glow</option><option value="bounce">Bounce</option></select></label>
 <label id="funRow" class="chk" hidden><input type="checkbox" id="fun"> Extra fun (emoji, sparkles and little animations)</label>
-<label>Show last <select id="range"><option value="15">15 minutes</option><option value="60" selected>1 hour</option><option value="360">6 hours</option><option value="1440">24 hours</option></select></label>
+<label>Show last <select id="range"><option value="15">15 minutes</option><option value="60" selected>1 hour</option><option value="360">6 hours</option><option value="1440">24 hours</option><option value="10080">7 days</option><option value="43200">30 days</option></select></label>
 <label class="chk"><input type="checkbox" id="bands"> Split client counts by band (2.4 / 5 / 6 GHz)</label>
 <p class="mute">Saved in this browser only. Mode applies to Honeycrisp; Pastel is always light and Stark always dark.</p></section>
 <section data-s="mon" hidden><h3>Monitoring</h3>
 <div class="row"><label>Network checks every <input id="iv" type="number" min="5" max="3600"> s</label><button id="save" class="pri">Save</button></div>
 <div class="row"><label>Server pings every <input id="siv" type="number" min="5" max="3600"> s</label><button id="ssave" class="pri">Save</button></div>
+<div class="row"><label>Keep history for <input id="ret" type="number" min="1" max="365"> days</label><button id="rsave" class="pri">Save</button></div>
+<p class="mute" style="margin:0">Takes roughly 1 MB per device per day. Shortening this deletes the older history at the next check.</p>
 <span id="mmsg" class="mute"></span></section>
 <section data-s="sec" hidden><h3>Security</h3>
 <div class="row"><label>Sign out after <input id="idle" type="number" min="0" max="1440"> minutes of inactivity</label><button id="isave" class="pri">Save</button></div>
 <span id="imsg" class="mute"></span>
-<p class="mute">0 turns it off. Only mouse, keyboard and touch use counts as activity, not the page refreshing itself. Guests, and people who ticked "Keep me signed in", are never signed out this way.</p></section>
+<p class="mute">0 turns it off. Only mouse, keyboard and touch use counts as activity, not the page refreshing itself. Guests, and people who ticked "Keep me signed in", are never signed out this way.</p>
+<div class="row" style="margin-top:1rem"><label>Lock out after <input id="att" type="number" min="1" max="20"> wrong password attempts</label><button id="asave" class="pri">Save</button></div>
+<span id="amsg" class="mute"></span>
+<p class="mute">Counted over five minutes, and the lock lasts until the count drops. It applies to signing in (per network address) and to changing a password (per person).</p>
+<p style="margin-top:1rem"><b>SSH host keys</b></p>
+<p class="mute">Beacon remembers each device's SSH key the first time it connects and refuses to connect if the key changes. After resetting or replacing a device, forget its key so it is trusted again.</p>
+<div class="row" style="justify-content:flex-start"><button id="hk-open">Forget SSH host keys…</button></div>
+<span id="hkmsg" class="mute"></span></section>
 <section data-s="brand" hidden><h3>Branding</h3>
 <label>Name <input id="b-name" maxlength="40"></label>
 <label>Browser tab title <input id="b-tab" maxlength="80" placeholder="Same as the name"></label>
@@ -280,18 +295,34 @@ textarea{font:inherit;padding:.5rem .65rem;border:1px solid var(--rule);border-r
 <span id="fb-msg" class="mute"></span>
 <div class="row adm"><label>GitHub repository <input id="fb-repo" placeholder="owner/name"></label><button id="fb-save">Save</button></div>
 <p class="mute adm" style="margin:0">Needs the issue forms from .github/ISSUE_TEMPLATE in that repository. Diagnostics never include IP addresses, hostnames, device names or logs.</p></section>
-<section data-s="about" hidden><h3>About</h3><p><b class="bn">Beacon</b> <span id="ver"></span></p><p class="mute">Your data lives in the /data folder of the container.</p></section>
+<section data-s="about" hidden><h3>About</h3><p><b class="bn">Beacon</b> <span id="ver"></span></p><p class="mute">Your data lives in the /data folder of the container.</p>
+<div class="adm"><h4 style="margin:.6rem 0 .4rem">Storage</h4>
+<dl><dt>History database</dt><dd id="st-db">–</dd><dt>History covers</dt><dd id="st-span">–</dd><dt>Icon cache</dt><dd id="st-ic">–</dd><dt>Everything in /data</dt><dd id="st-all">–</dd><dt>Disk space free</dt><dd id="st-disk">–</dd></dl>
+<div class="row" style="justify-content:flex-start;flex-wrap:wrap;margin-top:.7rem"><label>Icon source <select id="icsrc"><option value="selfhst">selfh.st</option><option value="dashboard">Dashboard Icons</option></select></label></div>
+<p class="mute" style="margin:.3rem 0 0">Changing it clears the icon cache. Icons: <a href="https://selfh.st/icons" target="_blank" rel="noopener">selfh.st/icons</a> (CC BY 4.0) and <a href="https://github.com/homarr-labs/dashboard-icons" target="_blank" rel="noopener">Dashboard Icons</a> (Apache-2.0); logos belong to their owners.</p>
+<div class="row" style="justify-content:flex-start;flex-wrap:wrap;margin-top:.7rem"><button id="st-icons">Clear icon cache</button><button id="st-compact">Compact database</button><button id="st-hist">Delete history…</button></div>
+<span id="st-msg" class="mute"></span></div></section>
 </div></dialog>
+<dialog id="kd"><div class="kb"><h3>Forget SSH host keys</h3>
+<p class="mute">A forgotten device is trusted again the next time Beacon connects to it, so only do this for devices you reset or replaced, on a network you trust.</p>
+<label class="kr"><input type="checkbox" id="kall"><span><b>All devices</b></span></label>
+<div id="klist"></div><span id="kerr" class="mute"></span>
+<div class="row" style="justify-content:flex-end"><button type="button" id="kx">Cancel</button><button type="button" id="kgo" class="pri" disabled>Forget selected</button></div></div></dialog>
 <div id="splash" hidden><form id="lf" class="tile card"><span class="bl logo big"></span><h2 class="bn">Beacon</h2><p id="tag" class="mute"></p>
 <input id="lu" placeholder="Name" autocomplete="username" required><input id="lp" type="password" placeholder="Password" autocomplete="current-password" required>
 <label class="chk"><input type="checkbox" id="lr"> Keep me signed in</label><span id="lerr" class="err" role="alert"></span>
-<button class="pri">Sign in</button><button type="button" id="lg" class="gb" hidden>Continue as guest</button></form></div>
+<button class="pri">Sign in</button><button type="button" id="lg" class="gb" hidden>Continue as guest</button></form>
+<form id="sf" class="tile card" hidden><span class="bl logo big"></span><h2 class="bn">Beacon</h2><p class="mute">Welcome! Create the admin account to get started.</p>
+<input id="sfu" placeholder="Admin name" value="admin" autocomplete="username" required maxlength="40"><input id="sfe" type="email" placeholder="Email" autocomplete="email" required>
+<input id="sfp" type="password" placeholder="Password (8+ characters)" autocomplete="new-password" required minlength="8"><input id="sfc" type="password" placeholder="Confirm password" autocomplete="new-password" required minlength="8">
+<span id="sferr" class="err" role="alert"></span><button class="pri">Create account</button></form></div>
 <p id="none" class="mute" hidden></p>
 <div id="grid"></div>
+<div id="ov"></div>
 <div id="lpanel"></div>
 </main>
 <script src="/vendor/chart.umd.min.js"></script>
-<script>window.Chart || document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"><\/script>')</script>
+<script>window.Chart || document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js" integrity="sha384-FcQlsUOd0TJjROrBxhJdUhXTUgNJQxTMcxZe6nHbaEfFL1zjQ+bq/uRoBQxb0KMo" crossorigin="anonymous"><\/script>')</script>
 <script>
 const $ = s => document.querySelector(s);
 class MiniChart {  // only used if Chart.js can't be loaded (for example a failed image build with no internet): plain lines, no hover
@@ -334,20 +365,22 @@ const LISTS = {network: "devices", servers: "servers", apps: "apps"};  // the sc
 const SZ = {stat: [3, 2], chart: [4, 3], summary: [4, 3], list: [12, 8], app: [2, 2]};
 const CAT = {  // key: [menu group, label, tile type]
   "n.online": ["Network", "Devices online", "stat"], "n.clients": ["Network", "Clients", "stat"], "n.poe": ["Network", "PoE draw", "stat"],
-  "n.rx": ["Network", "Throughput received", "stat"], "n.tx": ["Network", "Throughput sent", "stat"], "n.cpu": ["Network", "Average CPU", "stat"],
+  "n.net": ["Network", "Throughput", "stat"], "n.cpu": ["Network", "Average CPU", "stat"],
   "n.mem": ["Network", "Average memory", "stat"], "n.load": ["Network", "Highest load", "stat"], "n.up": ["Network", "Longest uptime", "stat"],
   "n.c.net": ["Network charts", "Throughput", "chart"], "n.c.use": ["Network charts", "CPU and memory", "chart"],
   "n.c.clients": ["Network charts", "Clients", "chart"], "n.c.poe": ["Network charts", "PoE draw", "chart"],
   "s.online": ["Servers", "Servers online", "stat"], "s.avg": ["Servers", "Average ping", "stat"], "s.max": ["Servers", "Slowest ping", "stat"],
   "s.c.ping": ["Server charts", "Ping", "chart"], "a.count": ["Apps", "Apps", "stat"],
 };
-const SUMK = {network: ["n.online", "n.clients", "n.poe", "n.rx", "n.tx"], servers: ["s.online", "s.avg", "s.max"], apps: ["a.count"]};
+const SUMK = {network: ["n.online", "n.clients", "n.poe", "n.net"], servers: ["s.online", "s.avg", "s.max"], apps: ["a.count"]};
 const uid = () => Math.random().toString(36).slice(2, 8);
 const T = (type, ref, x, y, w, h) => ({id: uid(), type, ref, x, y, w, h});
 const DEF = {
   home: () => [T("summary", "network", 0, 0, 6, 3), T("summary", "servers", 6, 0, 3, 3), T("summary", "apps", 9, 0, 3, 3)],
-  network: () => [T("stat", "n.online", 0, 0, 3, 3), T("stat", "n.clients", 3, 0, 3, 3), T("chart", "n.c.net", 6, 0, 3, 3), T("stat", "n.poe", 9, 0, 3, 3)],
-  servers: () => [T("stat", "s.online", 0, 0, 3, 3), T("stat", "s.avg", 3, 0, 3, 3), T("stat", "s.max", 6, 0, 3, 3), T("chart", "s.c.ping", 9, 0, 3, 3)],
+};
+const OV = {  // Network and Servers: one fixed overview panel above the list (not part of the tile grid, not configurable)
+  network: {stats: ["n.online", "n.clients", "n.poe"], chart: "n.c.net"},
+  servers: {stats: ["s.online", "s.avg", "s.max"], chart: "s.c.ping"},
 };
 let D = {}, DATA = {devices: []}, SERV = {servers: []}, tab = "home", edit = false, iv = 30, siv = 15, timer, stimer, st, bandsOn = false;
 const els = {}, lists = {};
@@ -372,7 +405,8 @@ const g = n => getComputedStyle(document.documentElement).getPropertyValue(n).tr
 const bps = b => b >= 1e6 ? (b / 1e6).toFixed(1) + " Mbps" : Math.round(b / 1e3) + " kbps";
 const pct = v => v + "%", W = v => v.toFixed(1) + " W", MS = v => v.toFixed(1) + " ms", PC = v => Math.round(v) + "%";
 const up = s => { const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60); return d ? `${d}d ${h}h` : `${h}h ${m}m`; };
-const lab = ts => new Date(ts * 1000).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit", second: "2-digit"});
+let RANGE = 60;  // minutes shown on the graphs; ranges over a day label the graph with dates
+const lab = ts => new Date(ts * 1000).toLocaleString([], RANGE > 1440 ? {month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"} : {hour: "2-digit", minute: "2-digit", second: "2-digit"});
 
 async function api(method, url, body) {
   const r = await fetch(url, {method, headers: {"Content-Type": "application/json"}, body: body && JSON.stringify(body)});
@@ -430,7 +464,7 @@ const split = () => {
 };
 const STAT = {  // each returns [value or null, detail line]
   "n.online": () => [`${live().length} of ${DATA.devices.length}`], "n.clients": () => [sum(vals("clients")), split()],
-  "n.poe": () => [fm(W, sum(vals("poe")))], "n.rx": () => [fm(bps, sum(vals("rx")))], "n.tx": () => [fm(bps, sum(vals("tx")))],
+  "n.poe": () => [fm(W, sum(vals("poe")))], "n.net": m => { const r = sum(vals("rx")), s = sum(vals("tx")); return [fm(bps, m === "rx" ? r : m === "tx" ? s : r == null && s == null ? null : (r ?? 0) + (s ?? 0))]; },  // m: total (default), rx or tx
   "n.cpu": () => [fm(PC, avg(vals("cpu")))], "n.mem": () => [fm(PC, avg(vals("mem")))],
   "n.load": () => [fm(v => v.toFixed(2), mx(vals("load")))], "n.up": () => [fm(up, mx(vals("uptime")))],
   "s.online": () => [`${lat().filter(x => x.ms != null).length} of ${SERV.servers.length}`],
@@ -454,9 +488,10 @@ const CHART = {
   "n.c.poe": () => ({sets: [["PoE draw", "--blue", agg(NET(), "poe", "sum", iv)]], fmt: W}),
   "s.c.ping": () => ({sets: [["Average ping", "--blue", agg(SRV(), "ms", "avg", siv)]], fmt: MS}),
 };
-const tot = (key, dash) => {
-  const [v, d] = STAT[key]();
-  return v == null && !dash ? "" : `<div class="tot"><small>${CAT[key][1]}</small><b>${v ?? "–"}</b>${d ? `<small>${esc(d)}</small>` : ""}</div>`;
+const lbl = (key, mode) => key === "n.net" && mode in {rx: 1, tx: 1} ? (mode === "rx" ? "Throughput received" : "Throughput sent") : CAT[key][1];
+const tot = (key, dash, mode) => {
+  const [v, d] = STAT[key](mode);
+  return v == null && !dash ? "" : `<div class="tot"><small>${lbl(key, mode)}</small><b>${v ?? "–"}</b>${d ? `<small>${esc(d)}</small>` : ""}</div>`;
 };
 
 // ---- tiles ----
@@ -468,13 +503,13 @@ const mk = (el, sets, max, fmt) => new Chart(el, {type: "line",
 const upd = (c, labels, ...sets) => { c.data.labels = labels; sets.forEach((s, i) => c.data.datasets[i].data = s); c.update(); };
 
 const slug = n => n.toLowerCase().trim().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-function icon(a) {  // emoji as-is, an image address as an image; blank = Beacon looks the app up by name (Heimdall's list, Dashboard Icons, selfh.st) and keeps a copy
+function icon(a) {  // emoji as-is, an image address as an image; blank = Beacon looks the app up by name (in the icon collection chosen in Settings > About) and keeps a copy
   const span = document.createElement("span"), ic = (a.icon || "").trim(), nm = (a.name || "").trim(), s = slug(nm);
   span.className = "ic";
   const letter = () => { span.textContent = (nm || "?")[0]; };
   if (ic && !/^https?:\/\//i.test(ic)) { span.textContent = ic; return span; }
-  const own = `/api/icon?name=${encodeURIComponent(nm)}`;
-  const c = ic ? [ic] : nm ? [own, ...(s ? [`https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/${s}.svg`, `https://cdn.jsdelivr.net/gh/selfhst/icons/png/${s}.png`] : [])] : [];
+  const own = `/api/icon?name=${encodeURIComponent(nm)}&s=${ICONS}`, base = ICONS === "dashboard" ? "homarr-labs/dashboard-icons" : "selfhst/icons";
+  const c = ic ? [ic] : nm ? [own, ...(s ? [`https://cdn.jsdelivr.net/gh/${base}/svg/${s}.svg`, `https://cdn.jsdelivr.net/gh/${base}/png/${s}.png`] : [])] : [];
   if (!c.length) { letter(); return span; }
   const img = new Image(); let i = 0;
   img.alt = ""; img.src = c[0];
@@ -500,11 +535,12 @@ function devFacts(d) {
     <dt>Uptime</dt><dd>${last.uptime ? up(last.uptime) : "–"}</dd>${last.clients != null ? `<dt>Clients</dt><dd>${last.clients}</dd>` + bandRows(last.bands) : ""}
     <dt>Load</dt><dd>${esc(last.load)}</dd>${last.poe != null ? `<dt>PoE draw</dt><dd>${last.poe} W</dd>` : ""}</dl>`;
 }
-function srvFacts(s) {
-  const ok = s.series.filter(x => x.ms != null), l = s.series.at(-1), n = s.series.length;
+function srvFacts(s) {  // works on raw results and on averaged steps (which carry n = results, d = no reply, max)
+  const l = s.series.at(-1), cnt = x => x.n ?? 1, downs = x => x.d ?? (x.ms == null ? 1 : 0), w = x => cnt(x) - downs(x), up = s.series.filter(x => x.ms != null);
+  const n = sum(s.series.map(cnt)) || 0, d = sum(s.series.map(downs)) || 0, wt = sum(up.map(w)), worst = mx(up.map(x => x.max ?? x.ms));
   return `<dl><dt>Type</dt><dd>${s.type === "vm" ? "Virtual machine" : "Server"}</dd><dt>Status</dt><dd>${!l ? "–" : l.ms != null ? "Online" : "Offline"}</dd><dt>Ping</dt><dd>${l?.ms != null ? MS(l.ms) : "–"}</dd>
-    <dt>Average</dt><dd>${ok.length ? MS(avg(ok.map(x => x.ms))) : "–"}</dd><dt>Worst</dt><dd>${ok.length ? MS(mx(ok.map(x => x.ms))) : "–"}</dd>
-    <dt>Loss</dt><dd>${n ? Math.round(100 * (1 - ok.length / n)) + "%" : "–"}</dd></dl>`;
+    <dt>Average</dt><dd>${wt ? MS(sum(up.map(x => x.ms * w(x))) / wt) : "–"}</dd><dt>Worst</dt><dd>${worst != null ? MS(worst) : "–"}</dd>
+    <dt>Loss</dt><dd>${n ? Math.round(100 * d / n) + "%" : "–"}</dd></dl>`;
 }
 
 // UniFi-style lists: one row per item, click a row for the details and graphs
@@ -696,7 +732,7 @@ function build(t) {
   el.querySelector(".rs").onpointerdown = e => drag(e, t, el, "size");
   el.querySelector(".cf").onclick = () => { el.picking = true; update(t, el); };
   el.querySelector(".rm").onclick = () => remove(t);
-  if (t.type !== "app") el.querySelector(".cf").hidden = true;
+  if (t.type !== "app" && t.ref !== "n.net") el.querySelector(".cf").hidden = true;
   return el;
 }
 
@@ -714,8 +750,19 @@ function pickApp(t, el) {  // an app tile with no app yet (or being changed) sho
   if (s) s.onchange = () => { if (!s.value) return; t.ref = s.value; el.picking = false; el.psig = null; save(); renderGrid(); };
   el.body.querySelector(".x")?.addEventListener("click", () => { el.picking = false; el.psig = null; update(t, el); });
 }
+function pickMode(t, el) {  // the throughput tile's gear: show total, received or sent
+  if (el.psig === "mode") return;  // leave an open menu alone while data refreshes
+  el.psig = "mode"; const m = t.mode || "total";
+  el.body.innerHTML = `<div class="pick"><select aria-label="Throughput to show">${[["total", "Total"], ["rx", "Received"], ["tx", "Sent"]].map(([v, l]) => `<option value="${v}"${v === m ? " selected" : ""}>${l}</option>`).join("")}</select><button type="button" class="x">Cancel</button></div>`;
+  el.body.querySelector("select").onchange = e => { t.mode = e.target.value; el.picking = false; el.psig = null; save(); update(t, el); };
+  el.body.querySelector(".x").onclick = () => { el.picking = false; el.psig = null; update(t, el); };
+}
 function update(t, el) {
-  if (t.type === "stat") el.body.innerHTML = tot(t.ref, true), el.ttl.textContent = CAT[t.ref][1];
+  if (t.type === "stat") {
+    el.ttl.textContent = lbl(t.ref, t.mode);
+    if (t.ref === "n.net" && el.picking) return pickMode(t, el);
+    el.psig = null; el.body.innerHTML = tot(t.ref, true, t.mode);
+  }
   else if (t.type === "summary") { el.ttl.textContent = NAMES[t.ref]; el.body.innerHTML = `<div class="sum">${SUMK[t.ref].map(k => tot(k)).join("")}</div>`; }
   else if (t.type === "chart") {
     const sp = CHART[t.ref]();
@@ -740,6 +787,21 @@ function kill(k, x) {  // remove tile x from tab k
   if (els[k + x.id]) { wipe(els[k + x.id]); delete els[k + x.id]; }
   D.tabs[k] = D.tabs[k].filter(y => y !== x);
 }
+function renderOv() {  // the single overview panel on Network and Servers
+  const box = $("#ov"), o = OV[tab];
+  if (!o) return box.replaceChildren();
+  const sp = CHART[o.chart]();
+  let el = els["ov." + tab];
+  if (!el) {
+    el = els["ov." + tab] = document.createElement("section");
+    el.className = "tile ov";
+    el.innerHTML = `<div class="ovs"></div><div class="ovc"><canvas></canvas></div>`;
+    el.charts = [mk(el.querySelector("canvas"), sp.sets.map(([l, c]) => [l, g(c)]), sp.max, sp.fmt)];
+  }
+  if (el.parentNode !== box) box.replaceChildren(el);
+  el.querySelector(".ovs").innerHTML = o.stats.map(k => tot(k, true)).join("");
+  upd(el.charts[0], sp.sets[0][2].map(p => lab(p.ts)), ...sp.sets.map(s => s[2].map(p => p.v)));
+}
 function renderGrid() {
   const gr = $("#grid"), list = tiles(), keep = new Set(list.map(t => tab + t.id));
   gr.querySelectorAll(".tile").forEach(c => keep.has(c.dataset.k) || c.remove());
@@ -752,6 +814,7 @@ function renderGrid() {
     update(t, el);
   });
   $("#none").hidden = list.length > 0 || !!LISTS[tab];
+  renderOv();
   if (LISTS[tab]) renderList(LISTS[tab]);
   $("#none").textContent = "Nothing here yet. Choose Edit layout, then + Add tile.";
 }
@@ -763,11 +826,11 @@ function remove(t) {
 function fillAdd() {
   const list = tiles(), has = (ty, ref) => list.some(t => t.type === ty && t.ref === ref), groups = {};
   const add = (grp, v, l) => (groups[grp] ||= []).push([v, l]);
-  for (const [k, [grp, label, ty]] of Object.entries(CAT)) if (!has(ty, k)) add(grp, `${ty}:${k}`, label);
+  for (const [k, [grp, label, ty]] of Object.entries(CAT)) if (k === "n.net" || !has(ty, k)) add(grp, `${ty}:${k}`, label);  // throughput can be placed more than once, e.g. one sent and one received
   for (const r of ["network", "servers", "apps"]) if (!has("summary", r)) add("Overviews", `summary:${r}`, `${NAMES[r]} summary`);
   add("Apps", "app:", "App");  // one entry; the tile then asks which app to show
   $("#add").innerHTML = `<option value="">+ Add tile</option>` + Object.entries(groups).map(([gr, o]) => `<optgroup label="${esc(gr)}">${o.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join("")}</optgroup>`).join("");
-  $("#add").hidden = !edit || tab === "apps";
+  $("#add").hidden = !edit || !!LISTS[tab];
 }
 $("#add").onchange = e => {
   const v = e.target.value, i = v.indexOf(":"), type = v.slice(0, i); e.target.value = "";
@@ -777,10 +840,18 @@ $("#add").onchange = e => {
 };
 
 // ---- data ----
+function fitRange() {  // only offer ranges that the kept history can cover
+  const sel = $("#range"), max = Math.max(1440, DATA.retention_days * 1440);
+  [...sel.options].forEach(o => { o.hidden = o.disabled = +o.value > max; });
+  if (+sel.value > max) { sel.value = [...sel.options].filter(o => !o.disabled).at(-1).value; RANGE = +sel.value; }
+}
 async function load() {
   try {
-    DATA = await api("GET", `/api/data?minutes=${$("#range").value}`);
+    RANGE = +$("#range").value;
+    DATA = await api("GET", `/api/data?minutes=${RANGE}`);
     if (!ME) return;
+    fitRange();
+    if (document.activeElement !== $("#ret")) $("#ret").value = DATA.retention_days;
     iv = DATA.interval; siv = DATA.server_interval; $("#ver").textContent = "Version " + DATA.version;
     if (document.activeElement !== $("#iv")) $("#iv").value = iv;
     if (document.activeElement !== $("#siv")) $("#siv").value = siv;
@@ -807,10 +878,10 @@ function setTab(k) {
   movePill();
   const lk = LISTS[tab];
   document.body.classList.toggle("listy", !!lk);
-  $("#grid").hidden = tab === "apps";
+  $("#grid").hidden = !!lk;
   if (lk) { lists[lk] ||= buildList(lk); $("#lpanel").replaceChildren(lists[lk]); } else $("#lpanel").replaceChildren();
-  if (tab === "apps" && edit) $("#edit").click();  // nothing to arrange on Apps, so leave edit mode
-  $("#edit").hidden = !can(2) || tab === "apps";
+  if (lk && edit) $("#edit").click();  // nothing to arrange on the list pages, so leave edit mode
+  $("#edit").hidden = !can(2) || !!lk;
   renderGrid(); fillAdd();
 }
 function applyTheme(rebuild) {
@@ -839,7 +910,8 @@ $("#edit").onclick = () => {
 const setIv = (id, key) => () => api("POST", "/api/settings", {[key]: +$(id).value}).then(() => { note("#mmsg", "Saved."); refresh(); }).catch(x => { note("#mmsg", x.message); });
 $("#save").onclick = setIv("#iv", "interval");
 $("#ssave").onclick = setIv("#siv", "server_interval");
-$("#range").onchange = refresh;
+$("#rsave").onclick = setIv("#ret", "retention_days");
+$("#range").onchange = () => { lsSet("range", $("#range").value); refresh(); };
 $("#bands").onchange = e => { bandsOn = e.target.checked; lsSet("bands", bandsOn ? "1" : "0"); renderGrid(); };
 $("#style").onchange = () => { lsSet("style", $("#style").value); applyTheme(true); };
 $("#theme").onchange = () => { lsSet("theme", $("#theme").value); applyTheme(true); };
@@ -849,7 +921,7 @@ new ResizeObserver(() => movePill()).observe($("#tabs")); document.fonts?.ready.
 matchMedia("(prefers-color-scheme: dark)").onchange = () => { if ($("#theme").value === "auto") applyTheme(true); };
 
 // ---- branding, sign-in, settings ----
-let BR = {name: "Beacon", tab: "", tagline: "", logo: "", favicon: ""}, ME = null, GUEST = false, AUTHON = true, BRD = {}, IDLE = 10, REM = false, REPO = "matt-waldeck/beacon";
+let BR = {name: "Beacon", tab: "", tagline: "", logo: "", favicon: ""}, ME = null, GUEST = false, AUTHON = true, BRD = {}, IDLE = 10, REM = false, SETUP = false, ICONS = "selfhst", REPO = "matt-waldeck/beacon";
 const MARK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>`;
 const logoHtml = src => src ? `<img src="${esc(src)}" alt="">` : MARK;
 function applyBrand() {
@@ -865,14 +937,15 @@ function stop() {
   clearTimeout(timer); clearTimeout(stimer);
   for (const k in els) { wipe(els[k]); delete els[k]; }
   for (const k in lists) { wipe(lists[k]); delete lists[k]; }
-  $("#grid").innerHTML = ""; $("#lpanel").innerHTML = ""; D = {}; DATA = {devices: []}; SERV = {servers: []};
+  $("#grid").innerHTML = ""; $("#ov").innerHTML = ""; $("#lpanel").innerHTML = ""; D = {}; DATA = {devices: []}; SERV = {servers: []};
 }
 function splash(msg) {  // the sign-in screen
   ME = null; stop();
   document.body.classList.add("splashing"); document.body.classList.remove("booting");
   $("#sd").close(); $("#splash").hidden = false;
-  $("#lg").hidden = !GUEST; $("#lerr").textContent = msg || ""; $("#lu").focus();
-  api("GET", "/api/me").then(m => { readMe(m); $("#lg").hidden = !GUEST; }).catch(() => {});  // guest access may have been switched on since this page loaded
+  $("#lf").hidden = SETUP; $("#sf").hidden = !SETUP; (SETUP ? $("#sfe") : $("#lu")).focus();
+  $("#lg").hidden = !GUEST; $("#lerr").textContent = msg || "";
+  api("GET", "/api/me").then(m => { readMe(m); $("#lg").hidden = !GUEST; $("#lf").hidden = SETUP; $("#sf").hidden = !SETUP; }).catch(() => {});  // guest access may have been switched on since this page loaded
 }
 function enter(u) {
   ME = u; $("#splash").hidden = true;
@@ -886,10 +959,15 @@ function enter(u) {
   start();
 }
 function sane() {  // a hand-edited or damaged layout is cleaned up rather than allowed to break the page
+  const fix = t => {  // the old separate received/sent tiles become one throughput tile with a mode; an unknown mode is dropped
+    if (t && t.type === "stat" && (t.ref === "n.rx" || t.ref === "n.tx")) return {...t, ref: "n.net", mode: t.ref.slice(2)};
+    if (t && t.mode && !["total", "rx", "tx"].includes(t.mode)) { t = {...t}; delete t.mode; }
+    return t;
+  };
   const good = t => t && typeof t === "object" && (t.type === "app" || (t.type === "stat" && STAT[t.ref]) || (t.type === "chart" && CHART[t.ref]) || (t.type === "summary" && SUMK[t.ref]));
   const num = (v, lo, hi, d) => Number.isFinite(+v) ? Math.max(lo, Math.min(hi, Math.round(+v))) : d, seen = new Set();
   for (const k of TABS) {
-    D.tabs[k] = (Array.isArray(D.tabs[k]) ? D.tabs[k] : []).filter(good).map(t => {
+    D.tabs[k] = (Array.isArray(D.tabs[k]) ? D.tabs[k] : []).map(fix).filter(good).map(t => {
       let id = String(t.id || ""); if (!id || seen.has(k + id)) id = uid(); seen.add(k + id);
       const w = num(t.w, 1, COLS, 3);
       return {...t, id, w, h: num(t.h, 1, 40, 3), x: num(t.x, 0, COLS - w, 0), y: num(t.y, 0, 400, 0)};
@@ -904,19 +982,19 @@ async function start() {
   D.apps ||= {}; D.tabs ||= {};
   TABS.forEach(k => D.tabs[k] ||= DEF[k] ? DEF[k]() : []);
   sane();
-  if (D.v !== "0.3") {  // 0.3: the device and server lists leave the grid, and Apps becomes a plain list
-    if (!D.v) { D.tabs.network = DEF.network(); D.tabs.servers = DEF.servers(); }  // 0.1 per-device tiles are replaced
-    for (const k of ["network", "servers"]) { D.tabs[k] = D.tabs[k].filter(t => t.type !== "list"); place(D.tabs[k]); }
-    D.tabs.apps = []; D.v = "0.3"; save();
+  if (D.v !== "1.0") {  // 1.0: Network and Servers get a fixed overview panel instead of tiles; Apps is a plain list
+    D.tabs.network = []; D.tabs.servers = []; D.tabs.apps = []; D.v = "1.0"; save();
   } else if (fresh) save();
   bandsOn = lsGet("bands") === "1"; $("#bands").checked = bandsOn;
+  const rg = lsGet("range"); if (rg && [...$("#range").options].some(o => o.value === rg)) $("#range").value = rg;
+  RANGE = +$("#range").value;
   const sty = lsGet("style"); $("#style").value = ["pastel", "stark"].includes(sty) ? sty : "honeycrisp"; $("#theme").value = lsGet("theme") || "auto";
   applyTheme(false);
   setTab(location.hash.slice(1));
   load(); loadS();
 }
 const signOut = async () => { try { await api("POST", "/api/logout"); } catch {} splash(); };
-function readMe(m) { GUEST = !!m.guest; AUTHON = m.auth !== false; IDLE = m.idle ?? 10; REM = !!m.remember; REPO = m.repo || REPO; }
+function readMe(m) { ICONS = m.icons || ICONS; SETUP = !!m.setup; GUEST = !!m.guest; AUTHON = m.auth !== false; IDLE = m.idle ?? 10; REM = !!m.remember; REPO = m.repo || REPO; }
 
 // inactivity: real use (mouse, keyboard, touch) is reported to the server now and then; the page itself polling does not count
 let lastAct = Date.now(), lastBeat = 0;
@@ -938,6 +1016,15 @@ $("#lf").onsubmit = async e => {
     $("#lp").value = ""; const m = await api("GET", "/api/me"); readMe(m); enter(m.user);
   } catch (x) { $("#lerr").textContent = x.message; }
 };
+$("#sf").onsubmit = async e => {
+  e.preventDefault();
+  if ($("#sfp").value !== $("#sfc").value) { $("#sferr").textContent = "The passwords don't match."; return; }
+  try {
+    await api("POST", "/api/setup", {name: $("#sfu").value, email: $("#sfe").value, password: $("#sfp").value});
+    $("#sfp").value = $("#sfc").value = ""; $("#sferr").textContent = "";
+    const m = await api("GET", "/api/me"); readMe(m); enter(m.user);
+  } catch (x) { $("#sferr").textContent = x.message; }
+};
 $("#lg").onclick = async () => {
   try { await api("POST", "/api/login", {guest: true}); const m = await api("GET", "/api/me"); readMe(m); enter(m.user); } catch (x) { $("#lerr").textContent = x.message; }
 };
@@ -952,13 +1039,14 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") $("#um").hid
 $("#so").onclick = signOut;
 
 // settings dialog
-const clearNotes = () => ["mmsg", "imsg", "bmsg", "perr", "uerr", "fb-msg"].forEach(i => note("#" + i, ""));
+const clearNotes = () => ["mmsg", "imsg", "amsg", "hkmsg", "kerr", "bmsg", "perr", "uerr", "fb-msg", "st-msg"].forEach(i => note("#" + i, ""));
 function showSec(s) {
   clearNotes();
   $("#sd").querySelectorAll("[data-s]").forEach(e => e.tagName === "SECTION" ? e.hidden = e.dataset.s !== s : e.setAttribute("aria-current", e.dataset.s === s));
   if (s === "users") loadUsers();
   if (s === "fb") fbInit();
-  if (s === "sec") { $("#idle").value = IDLE; note("#imsg", ""); }
+  if (s === "about" && can(3)) loadStorage();
+  if (s === "sec") { $("#idle").value = IDLE; note("#imsg", ""); api("GET", "/api/security").then(r => { $("#att").value = r.max_attempts; }).catch(() => {}); }
   if (s === "brand") fillBrand();
   if (s === "account") { $("#acn").textContent = ME.name; $("#acr").textContent = ME.role; }
 }
@@ -971,6 +1059,56 @@ $("#sn").onclick = e => { const b = e.target.closest("button"); if (b) showSec(b
 $("#sx").onclick = () => $("#sd").close();
 $("#sd").addEventListener("close", clearNotes);
 $("#sd").onclick = e => { if (e.target === $("#sd")) $("#sd").close(); };
+
+const bytes = n => n < 1024 ? n + " B" : n < 1048576 ? (n / 1024).toFixed(0) + " KB" : n < 1073741824 ? (n / 1048576).toFixed(1) + " MB" : (n / 1073741824).toFixed(2) + " GB";
+async function loadStorage() {
+  try {
+    const r = await api("GET", "/api/storage");
+    $("#st-db").textContent = `${bytes(r.db.bytes)} (${r.db.samples.toLocaleString()} device samples, ${r.db.pings.toLocaleString()} pings${r.db.reusable > 1048576 ? ", " + bytes(r.db.reusable) + " reusable" : ""})`;
+    $("#st-span").textContent = r.db.since ? `${((Date.now() / 1000 - r.db.since) / 86400).toFixed(1)} days (keeping ${r.retention_days})` : "nothing yet";
+    $("#icsrc").value = ICONS;
+    $("#st-ic").textContent = `${bytes(r.icons.bytes)} (${r.icons.count} icons)`; $("#st-all").textContent = bytes(r.data.bytes); $("#st-disk").textContent = `${bytes(r.disk.free)} of ${bytes(r.disk.total)}`;
+  } catch (x) { note("#st-msg", x.message); }
+}
+const purge = (what, ask, done) => async () => {
+  if (ask && !confirm(ask)) return;
+  try { const r = await api("POST", "/api/storage/purge", {what}); note("#st-msg", done(r)); loadStorage(); if (what === "history") refresh(); }
+  catch (x) { note("#st-msg", x.message); }
+};
+$("#icsrc").onchange = async () => {
+  const v = $("#icsrc").value;
+  try { await api("POST", "/api/settings", {icon_source: v}); ICONS = v; note("#st-msg", "Icon source changed. The icon cache was cleared, so icons are looked up again."); loadStorage(); refresh(); }
+  catch (x) { $("#icsrc").value = ICONS; note("#st-msg", x.message); }
+};
+$("#st-icons").onclick = purge("icons", "Clear the icon cache? Icons are fetched again when needed.", r => `Removed ${r.removed} icons.`);
+$("#st-compact").onclick = purge("compact", "", () => "Database compacted.");
+$("#asave").onclick = () => api("POST", "/api/settings", {max_attempts: +$("#att").value}).then(r => { $("#att").value = r.max_attempts; note("#amsg", "Saved."); }).catch(x => { note("#amsg", x.message); });
+const kboxes = () => [...$("#klist").querySelectorAll("input[type=checkbox]")];
+function kSync() {
+  const b = kboxes(), n = b.filter(x => x.checked).length;
+  $("#kall").checked = !!b.length && n === b.length; $("#kall").indeterminate = n > 0 && n < b.length; $("#kall").disabled = !b.length;
+  $("#kgo").disabled = !n; $("#kgo").textContent = n ? `Forget ${n} selected` : "Forget selected";
+}
+$("#hk-open").onclick = async () => {
+  try {
+    const r = await api("GET", "/api/hostkeys");
+    $("#klist").innerHTML = r.keys.length ? r.keys.map(k => `<label class="kr"><input type="checkbox" data-h="${esc(k.host)}"><span><b>${esc(k.name || k.host)}</b>${k.name ? ` <small>${esc(k.host)}</small>` : " <small>Not in your device list</small>"}<small>${esc(k.type)} ${esc(k.fingerprint)}</small></span></label>`).join("") : `<p class="mute">No keys are stored yet. Beacon remembers a device's key the first time it connects.</p>`;
+    note("#kerr", ""); kSync(); $("#kd").showModal();
+  } catch (x) { note("#hkmsg", x.message); }
+};
+$("#kall").onchange = () => { kboxes().forEach(x => x.checked = $("#kall").checked); kSync(); };
+$("#klist").onchange = kSync;
+$("#kx").onclick = () => $("#kd").close();
+$("#kd").onclick = e => { if (e.target === $("#kd")) $("#kd").close(); };
+$("#kgo").onclick = async () => {
+  const hosts = kboxes().filter(x => x.checked).map(x => x.dataset.h);
+  if (!hosts.length) return;
+  try {
+    const r = await api("POST", "/api/hostkeys/forget", {hosts});
+    $("#kd").close(); note("#hkmsg", `Forgot ${r.removed} host ${r.removed === 1 ? "key" : "keys"}. Those devices are trusted again the next time they are polled.`);
+  } catch (x) { note("#kerr", x.message); }
+};
+$("#st-hist").onclick = purge("history", "Delete ALL history, both device and server graphs? This can't be undone. Your devices, servers, apps and settings are kept.", r => `Deleted ${r.removed.toLocaleString()} records.`);
 
 async function loadUsers() {
   try {

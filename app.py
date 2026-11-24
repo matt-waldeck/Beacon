@@ -1,4 +1,4 @@
-import functools, hashlib, json, os, queue, re, secrets, shutil, sqlite3, subprocess, threading, time, urllib.error, urllib.parse, urllib.request
+import base64, functools, hashlib, json, os, queue, re, secrets, shutil, sqlite3, subprocess, threading, time, urllib.error, urllib.parse, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 import paramiko
@@ -7,7 +7,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 
 DATA = os.environ.get("DATA_DIR", "/data")
-VERSION = "1.0.0-rc1"
+VERSION = "1.0.0"
 DEFAULT_REPO = os.environ.get("GITHUB_REPO") or "matt-waldeck/beacon"  # where the Feedback page sends people
 CFG, SET, DB, DEV, SRV = (os.path.join(DATA, n) for n in ("config.json", "settings.json", "stats.db", "devices.json", "servers.json"))
 # Read-only /proc reads work on every UniFi device; mca-dump adds model/firmware/client count where present.
@@ -87,10 +87,17 @@ def devices():
     return items("devices")
 
 
+def whole(v, default, lo, hi):  # a hand-edited or damaged setting falls back to its default instead of breaking every request
+    try:
+        return max(lo, min(hi, int(v)))
+    except (TypeError, ValueError):
+        return default
+
+
 def conf():
     s = read_json(SET, {})
     s = s if isinstance(s, dict) else {}
-    return {"interval": s.get("interval", cfg().get("interval", 30)), "server_interval": s.get("server_interval", 15), "guest": bool(s.get("guest", False)), "idle_minutes": int(s.get("idle_minutes", 10)), "repo": str(s.get("repo", ""))}
+    return {"interval": whole(s.get("interval", cfg().get("interval", 30)), 30, 5, 3600), "server_interval": whole(s.get("server_interval", 15), 15, 5, 3600), "guest": bool(s.get("guest", False)), "idle_minutes": whole(s.get("idle_minutes", 10), 10, 0, 1440), "max_attempts": whole(s.get("max_attempts", 5), 5, 1, 20), "repo": str(s.get("repo", "")), "retention_days": s.get("retention_days"), "icon_source": s.get("icon_source") if s.get("icon_source") in ICON_SOURCES else DEFAULT_ICONS}
 
 
 def interval():
@@ -108,11 +115,91 @@ def sql(q, a=()):
             db.close()
 
 
+METRICS = ("cpu", "mem", "load", "rx", "tx", "clients", "poe")  # numbers kept in their own columns so long graphs are quick
+
+
+def migrate():
+    sql("CREATE TABLE IF NOT EXISTS samples (dev TEXT, ts REAL, data TEXT)")
+    sql("CREATE INDEX IF NOT EXISTS i ON samples (dev, ts)")
+    sql("CREATE TABLE IF NOT EXISTS pings (dev TEXT, ts REAL, ms REAL)")
+    sql("CREATE INDEX IF NOT EXISTS pi ON pings (dev, ts)")
+    have = {r[1] for r in sql("PRAGMA table_info(samples)")}
+    for k in METRICS:
+        if "m_" + k not in have:
+            sql(f"ALTER TABLE samples ADD COLUMN m_{k} REAL")
+    if sql("PRAGMA user_version")[0][0] < 1:  # one time: copy the numbers out of the stored samples
+        sql("UPDATE samples SET " + ", ".join(f"m_{k} = json_extract(data, '$.{k}')" for k in METRICS) + " WHERE json_extract(data, '$.error') IS NULL")
+        sql("PRAGMA user_version = 1")
+
+
+def save_sample(name, r):
+    sql("INSERT INTO samples (dev, ts, data, " + ", ".join("m_" + k for k in METRICS) + ") VALUES (?,?,?," + ",".join("?" * len(METRICS)) + ")",
+        (name, r["ts"], json.dumps(r), *(r.get(k) for k in METRICS)))
+
+
+def retention():  # days of history to keep: Settings first, then config.json, then 7
+    s = read_json(SET, {})
+    for v in (s.get("retention_days") if isinstance(s, dict) else None, cfg().get("retention_days"), 7):
+        try:
+            return max(1, min(365, int(v)))
+        except (TypeError, ValueError):
+            continue
+
+
+def prune():
+    cutoff = time.time() - 86400 * retention()
+    sql("DELETE FROM samples WHERE ts < ?", (cutoff,))
+    sql("DELETE FROM pings WHERE ts < ?", (cutoff,))
+
+
+def long_samples(name, mins):  # a long range: averaged into about 300 steps, plus the newest real sample so the details stay current
+    b = max(60, mins * 60 // 300)
+    rows = sql("SELECT CAST(ts / ? AS INTEGER) k, " + ", ".join(f"AVG(m_{k})" for k in METRICS) + " FROM samples WHERE dev=? AND ts>? GROUP BY k ORDER BY k", (b, name, time.time() - mins * 60))
+    out = []
+    for row in rows:
+        r = {"ts": row[0] * b + b // 2}  # steps line up across devices, so combined graphs add up
+        r.update({k: round(v, 2) for k, v in zip(METRICS, row[1:]) if v is not None})
+        if len(r) > 1:
+            out.append(r)
+    last = sql("SELECT data FROM samples WHERE dev=? ORDER BY ts DESC LIMIT 1", (name,))
+    return out + ([json.loads(last[0][0])] if last else [])
+
+
+def long_pings(name, mins):
+    b = max(60, mins * 60 // 300)
+    rows = sql("SELECT CAST(ts / ? AS INTEGER) k, AVG(ms), MAX(ms), COUNT(*), SUM(ms IS NULL) FROM pings WHERE dev=? AND ts>? GROUP BY k ORDER BY k", (b, name, time.time() - mins * 60))
+    out = [{"ts": k * b + b // 2, "ms": None if a is None else round(a, 2), "max": mx, "n": n, "d": d} for k, a, mx, n, d in rows]
+    last = sql("SELECT ts, ms FROM pings WHERE dev=? ORDER BY ts DESC LIMIT 1", (name,))
+    return out + ([{"ts": last[0][0], "ms": last[0][1], "max": last[0][1], "n": 1, "d": int(last[0][1] is None)}] if last else [])
+
+
+KNOWN_HOSTS, hklock = os.path.join(DATA, "known_hosts"), threading.Lock()
+
+
+class TrustFirst(paramiko.MissingHostKeyPolicy):
+    """Trust a device the first time it is seen and remember its key; after that only that key is accepted."""
+    def missing_host_key(self, client, hostname, key):
+        with hklock:  # several devices are polled at once; each one re-reads the file so no addition is lost
+            hk = paramiko.HostKeys()
+            if os.path.exists(KNOWN_HOSTS):
+                hk.load(KNOWN_HOSTS)
+            old = hk.lookup(hostname)
+            if old:  # already known under another key type: a mismatch, not a first visit
+                raise paramiko.BadHostKeyException(hostname, key, next(iter(old.values())))
+            hk.add(hostname, key.get_name(), key)
+            hk.save(KNOWN_HOSTS)
+            os.chmod(KNOWN_HOSTS, 0o600)
+        client._host_keys.add(hostname, key.get_name(), key)  # lets this connection carry on
+
+
 def ssh_run(d):
     if "user" not in d:
         raise ValueError("No SSH user set: use SSH_USER or the ssh block in config.json.")
     c = paramiko.SSHClient()
-    c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    with hklock:
+        if os.path.exists(KNOWN_HOSTS):
+            c.load_host_keys(KNOWN_HOSTS)
+    c.set_missing_host_key_policy(TrustFirst())
     c.connect(d["host"], port=d.get("port", 22), username=d["user"], password=d.get("password"),
               key_filename=d.get("key_file"), timeout=8, look_for_keys=False, allow_agent=False)
     try:
@@ -167,9 +254,11 @@ def poll(d):
         r = parse(ssh_run(d), d)
     except (KeyError, IndexError):
         r = {"ts": time.time(), "error": "Unexpected reply from the device. Is it a UniFi (Linux) device?"}
+    except paramiko.BadHostKeyException:  # nothing was sent: the password is only offered once the key is accepted
+        r = {"ts": time.time(), "error": "The device's SSH host key has changed, so Beacon did not connect. If you reset or updated the device, use Settings > About > Forget SSH host keys."}
     except Exception as e:
         r = {"ts": time.time(), "error": str(e)[:200]}
-    sql("INSERT INTO samples VALUES (?,?,?)", (d["name"], r["ts"], json.dumps(r)))
+    save_sample(d["name"], r)
 
 
 def loop():
@@ -184,7 +273,7 @@ def loop():
             devs = [{**shared, **d} for d in devices()]
             with ThreadPoolExecutor(8) as ex:
                 list(ex.map(poll, devs))
-            sql("DELETE FROM samples WHERE ts < ?", (t0 - 86400 * c.get("retention_days", 7),))
+            prune()
         except Exception as e:
             print("poll error:", e, flush=True)
         wake.wait(max(1, interval() - (time.time() - t0)))
@@ -198,7 +287,7 @@ def index():
 
 def minutes_arg():  # ?minutes= from the page, kept to something sensible
     try:
-        return max(1, min(10080, int(request.args.get("minutes", 60))))
+        return max(1, min(max(1440, retention() * 1440), int(request.args.get("minutes", 60))))
     except ValueError:
         return 60
 
@@ -207,11 +296,15 @@ def minutes_arg():  # ?minutes= from the page, kept to something sensible
 def data():
     mins, out = minutes_arg(), []
     for d in devices():  # passwords never leave the server
-        rows = sql("SELECT data FROM samples WHERE dev=? AND ts>? ORDER BY ts", (d["name"], time.time() - mins * 60))
-        series = [json.loads(r[0]) for r in rows]
-        step = max(1, len(series) // 300)  # downsample long ranges, always keeping the newest sample
-        out.append({"name": d["name"], "host": d["host"], "series": series[::-1][::step][::-1]})
-    return jsonify(interval=interval(), server_interval=conf()["server_interval"], version=VERSION, devices=out)
+        if mins > 1440:
+            series = long_samples(d["name"], mins)
+        else:
+            rows = sql("SELECT data FROM samples WHERE dev=? AND ts>? ORDER BY ts", (d["name"], time.time() - mins * 60))
+            series = [json.loads(r[0]) for r in rows]
+            step = max(1, len(series) // 300)  # downsample, always keeping the newest sample
+            series = series[::-1][::step][::-1]
+        out.append({"name": d["name"], "host": d["host"], "series": series})
+    return jsonify(interval=interval(), server_interval=conf()["server_interval"], version=VERSION, retention_days=retention(), devices=out)
 
 
 @app.post("/api/settings")
@@ -224,10 +317,21 @@ def set_settings():
                 s[k] = max(5, min(3600, int(j[k])))
         if "idle_minutes" in j:
             s["idle_minutes"] = max(0, min(1440, int(j["idle_minutes"])))  # 0 = never sign out
+        if "retention_days" in j:
+            s["retention_days"] = max(1, min(365, int(j["retention_days"])))
+        if "max_attempts" in j:  # wrong passwords allowed in five minutes before a lock-out
+            s["max_attempts"] = max(1, min(20, int(j["max_attempts"])))
     except (TypeError, ValueError):
         return bad("Enter a whole number.")
     if "guest" in j:
         s["guest"] = bool(j["guest"])
+    if "icon_source" in j:  # which icon collection names are looked up in; a change clears the cache so icons are found again
+        k = str(j["icon_source"])
+        if k not in ICON_SOURCES:
+            return bad("Unknown icon source.")
+        if k != s["icon_source"]:
+            s["icon_source"] = k
+            clear_icons()
     if "repo" in j:  # the GitHub repository the Feedback page opens issues on; blank = the default
         r = str(j["repo"]).strip()
         if r and not re.fullmatch(r"[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}", r):
@@ -300,14 +404,17 @@ def setup_users():
             lst.append({"name": USER, "hash": generate_password_hash(pw), "role": "admin"})
         elif not check_password_hash(u["hash"], pw):
             u["hash"], u["role"] = generate_password_hash(pw), "admin"
-    elif not lst:
-        p = secrets.token_urlsafe(12)
-        lst = [{"name": USER, "hash": generate_password_hash(p), "role": "admin"}]
-        print(f"First start: sign in as '{USER}' with password {p} (set UI_PASSWORD to choose your own)", flush=True)
+    elif not lst:  # nobody yet: the first person to open the web UI creates the admin (POST /api/setup)
+        print("First start: open Beacon in your browser to create the admin account (or set UI_PASSWORD to skip that step).", flush=True)
     if json.dumps(lst) != before:
         save_users(lst)
 
 
+def needs_setup():
+    return not AUTH_OFF and not users()
+
+
+EMAIL = re.compile(r"^[^@\s]{1,64}@[^@\s]{1,255}\.[^@\s]{2,}$")
 DUMMY = generate_password_hash("not-a-real-password")  # keeps timing similar when the name is unknown
 if AUTH_OFF:
     print("WARNING: sign-in disabled (UI_AUTH=off). Protect this app another way.", flush=True)
@@ -334,8 +441,9 @@ def who():
     return None
 
 
+ADMIN_GET = ("/api/users", "/api/storage", "/api/hostkeys", "/api/security")  # reading these needs an admin
 PASSIVE = {"/api/data", "/api/servers"}  # background polling: does not count as someone using the page
-OPEN = {("GET", "/vendor/chart.umd.min.js"), ("GET", "/"), ("GET", "/healthz"), ("GET", "/api/me"), ("GET", "/api/brand"), ("POST", "/api/login")}
+OPEN = {("GET", "/vendor/chart.umd.min.js"), ("GET", "/"), ("GET", "/healthz"), ("GET", "/api/me"), ("GET", "/api/brand"), ("POST", "/api/login"), ("POST", "/api/setup")}
 
 
 @app.before_request
@@ -347,7 +455,7 @@ def guard():
     if not me:
         exp = bool(g.get("expired"))
         return jsonify(error="You were signed out after a period of inactivity." if exp else "Please sign in.", expired=exp), 401
-    need = 1 if p in ("/api/logout", "/api/me/password", "/api/activity") or (m == "GET" and p != "/api/users") else 2 if (m, p) in (("PUT", "/api/dash"), ("POST", "/api/icon/resolve")) else 3
+    need = 1 if p in ("/api/logout", "/api/me/password", "/api/activity") or (m == "GET" and p not in ADMIN_GET) else 2 if (m, p) in (("PUT", "/api/dash"), ("POST", "/api/icon/resolve")) else 3
     if LEVEL[me["role"]] < need:
         return jsonify(error="You don't have permission to do that."), 403
     if session.get("u") and not (m == "GET" and p in PASSIVE) and time.time() - session.get("t", 0) > 15:
@@ -453,8 +561,11 @@ def clean_tile(x):
         except (TypeError, ValueError):
             return d
     w = num("w", 1, 12, 3)
-    return {"id": str(x.get("id") or secrets.token_hex(3))[:16], "type": x["type"], "ref": str(x.get("ref", ""))[:40],
-            "x": num("x", 0, 12 - w, 0), "y": num("y", 0, 400, 0), "w": w, "h": num("h", 1, 40, 3)}
+    t = {"id": str(x.get("id") or secrets.token_hex(3))[:16], "type": x["type"], "ref": str(x.get("ref", ""))[:40],
+         "x": num("x", 0, 12 - w, 0), "y": num("y", 0, 400, 0), "w": w, "h": num("h", 1, 40, 3)}
+    if x.get("mode") in ("total", "rx", "tx"):  # the throughput tile: show total, received or sent
+        t["mode"] = x["mode"]
+    return t
 
 
 def clean_dash(d):  # whatever is sent, only well-formed tiles and apps are kept
@@ -492,7 +603,16 @@ def put_dash():
 
 @app.get("/api/me")
 def me():
-    return jsonify(user=who(), guest=conf()["guest"], auth=not AUTH_OFF, version=VERSION, idle=conf()["idle_minutes"], remember=bool(session.get("r")), repo=conf()["repo"] or DEFAULT_REPO)
+    return jsonify(user=who(), setup=needs_setup(), guest=conf()["guest"], auth=not AUTH_OFF, version=VERSION, idle=conf()["idle_minutes"], icons=conf()["icon_source"], remember=bool(session.get("r")), repo=conf()["repo"] or DEFAULT_REPO)
+
+
+def recent_fails(key):  # failed attempts in the last five minutes for an address (sign-in) or a name (password change)
+    now = time.time()
+    if len(fails) > 500:  # forget keys with no recent failures
+        for k in [k for k, v in fails.items() if not [t for t in v if now - t < 300]]:
+            del fails[k]
+    fails[key] = [t for t in fails.get(key, []) if now - t < 300]
+    return fails[key]
 
 
 @app.post("/api/login")
@@ -504,12 +624,9 @@ def login():
         session.clear()
         session["g"], session.permanent = 1, True
         return jsonify(ok=True)
-    ip, now = request.remote_addr, time.time()
-    if len(fails) > 500:  # forget clients with no recent failures
-        for k in [k for k, v in fails.items() if not [t for t in v if now - t < 300]]:
-            del fails[k]
-    recent = fails[ip] = [t for t in fails.get(ip, []) if now - t < 300]
-    if len(recent) >= 5:
+    now = time.time()
+    recent = recent_fails(request.remote_addr)
+    if len(recent) >= conf()["max_attempts"]:
         return bad("Too many attempts. Try again in a few minutes.", 429)
     name = str(j.get("name", "")).strip().lower()
     u = next((x for x in users() if x["name"].lower() == name), None)
@@ -520,6 +637,25 @@ def login():
     session.clear()
     session["u"], session["h"], session.permanent = u["name"], u["hash"][-12:], bool(j.get("remember"))
     session["t"], session["r"] = int(time.time()), 1 if j.get("remember") else 0
+    return jsonify(ok=True)
+
+
+@app.post("/api/setup")
+@locked
+def setup():  # first run only: create the admin, then sign them in. Closed for good once any user exists.
+    if not needs_setup():
+        return bad("Setup is already complete.", 403)
+    j = request.get_json(silent=True) or {}
+    name, email, pw = str(j.get("name", "")).strip()[:40] or USER, str(j.get("email", "")).strip()[:320], str(j.get("password", ""))
+    if not EMAIL.match(email):
+        return bad("Enter a valid email address.")
+    if len(pw) < 8:
+        return bad("Use at least 8 characters.")
+    u = {"name": name, "hash": generate_password_hash(pw), "role": "admin", "email": email}
+    save_users([u])
+    session.clear()
+    session["u"], session["h"], session.permanent = u["name"], u["hash"][-12:], True
+    session["t"], session["r"] = int(time.time()), 1
     return jsonify(ok=True)
 
 
@@ -536,7 +672,11 @@ def change_password():
     u = next((x for x in lst if x["name"] == who()["name"]), None)
     if not u:
         return bad("Guests can't change a password.", 403)
+    recent = recent_fails("pw:" + u["name"])  # guessing the current password is limited like signing in
+    if len(recent) >= conf()["max_attempts"]:
+        return bad("Too many attempts. Try again in a few minutes.", 429)
     if not check_password_hash(u["hash"], str(j.get("current", ""))):
+        recent.append(time.time())
         return bad("Current password is wrong.")
     if len(str(j.get("new", ""))) < 8:
         return bad("Use at least 8 characters.")
@@ -548,7 +688,7 @@ def change_password():
 
 @app.get("/api/users")
 def list_users():
-    return jsonify(users=[{"name": u["name"], "role": u["role"]} for u in users()], guest=conf()["guest"])
+    return jsonify(users=[{"name": u["name"], "role": u["role"], "email": u.get("email", "")} for u in users()], guest=conf()["guest"])
 
 
 @app.post("/api/users")
@@ -656,7 +796,6 @@ def sloop():
                 res = list(ex.map(lambda s: (s["name"], ping(s["host"])), items("servers")))
             for n, ms in res:
                 sql("INSERT INTO pings VALUES (?,?,?)", (n, t0, ms))
-            sql("DELETE FROM pings WHERE ts < ?", (t0 - 86400 * cfg().get("retention_days", 7),))
         except Exception as e:
             print("ping error:", e, flush=True)
         swake.wait(max(1, conf()["server_interval"] - (time.time() - t0)))
@@ -667,27 +806,31 @@ def sloop():
 def servers_data():
     mins, out = minutes_arg(), []
     for s in items("servers"):
-        rows = sql("SELECT ts, ms FROM pings WHERE dev=? AND ts>? ORDER BY ts", (s["name"], time.time() - mins * 60))
-        series = [{"ts": r[0], "ms": r[1]} for r in rows]
-        step = max(1, len(series) // 300)  # downsample long ranges, keeping the newest sample
-        out.append({"name": s["name"], "host": s["host"], "type": s.get("type", "server"), "series": series[::-1][::step][::-1]})
+        if mins > 1440:
+            series = long_pings(s["name"], mins)
+        else:
+            rows = sql("SELECT ts, ms FROM pings WHERE dev=? AND ts>? ORDER BY ts", (s["name"], time.time() - mins * 60))
+            series = [{"ts": r[0], "ms": r[1]} for r in rows]
+            step = max(1, len(series) // 300)  # downsample, keeping the newest sample
+            series = series[::-1][::step][::-1]
+        out.append({"name": s["name"], "host": s["host"], "type": s.get("type", "server"), "series": series})
     return jsonify(interval=conf()["server_interval"], servers=out)
 
 
 ICON_DIR = os.path.join(DATA, "icons")
-HM_FILE = os.path.join(DATA, "heimdall.json")
 
 
 def source_url(env, default):
     return (os.environ.get(env) or default).rstrip("/") + "/"
 
 
-HEIMDALL = source_url("HEIMDALL_SOURCE", "https://appslist.heimdall.site")
-DASH_ICONS = source_url("DASHBOARD_ICONS_SOURCE", "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons")
-SELFHST = source_url("SELFHST_ICONS_SOURCE", "https://cdn.jsdelivr.net/gh/selfhst/icons")
+ICON_SOURCES = {  # key: (name shown, base address). Both serve /svg/<name>.svg and /png/<name>.png with lowercase-hyphen names
+    "selfhst": ("selfh.st", source_url("SELFHST_ICONS_SOURCE", "https://cdn.jsdelivr.net/gh/selfhst/icons")),  # CC BY 4.0: credit is shown in Settings > About and the README
+    "dashboard": ("Dashboard Icons", source_url("DASHBOARD_ICONS_SOURCE", "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons")),  # Apache-2.0
+}
+DEFAULT_ICONS = "selfhst"
 MIME = {"png": "image/png", "jpg": "image/jpeg", "gif": "image/gif", "ico": "image/x-icon", "webp": "image/webp", "svg": "image/svg+xml"}
 SIGNATURES = {b"\x89PNG": "png", b"\xff\xd8\xff": "jpg", b"GIF8": "gif", b"\x00\x00\x01\x00": "ico"}
-HM = {"map": None, "t": 0, "ok": None}  # Heimdall's app list: normalised name -> icon address
 iconq, pending, icon_sem = queue.Queue(), set(), threading.BoundedSemaphore(3)
 
 
@@ -710,52 +853,35 @@ def fetch(url, limit=400_000):  # (bytes, None), or (None, "missing" | "network"
         return None, "network"
 
 
+UNSAFE_SVG = re.compile(rb"<script|<foreignobject|<iframe|<embed|<object|<!entity|javascript:|\bon[a-z]+\s*=")  # scripts, embedded pages and event handlers never belong in an icon
+
+
 def image_kind(data):  # what the bytes really are, or None when they aren't a safe image
     for sig, kind in SIGNATURES.items():
         if data.startswith(sig):
             return kind
     if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
         return "webp"
-    if data[:600].lstrip().lower().startswith((b"<svg", b"<?xml")) and b"<svg" in data[:2000].lower() and b"<script" not in data.lower():
+    low = data.lower()
+    if data[:600].lstrip().lower().startswith((b"<svg", b"<?xml")) and b"<svg" in data[:2000].lower() and not UNSAFE_SVG.search(low):
         return "svg"
     return None
 
 
-def heimdall_map():  # Heimdall's list.json, kept for a week; if it can't be reached, use the old copy and retry in 10 minutes
-    week = 7 * 86400
-    if HM["map"] is not None and time.time() - HM["t"] < week:
-        return HM["map"]
-    cached = read_json(HM_FILE, None)
-    if isinstance(cached, dict) and time.time() - cached.get("t", 0) < week and isinstance(cached.get("map"), dict):
-        HM.update(map=cached["map"], t=cached["t"], ok=True)
-        return HM["map"]
-    data, _ = fetch(HEIMDALL + "list.json", limit=8_000_000)
-    found = {}
-    try:
-        raw = json.loads(data) if data else None
-        apps = raw.get("apps", raw) if isinstance(raw, dict) else raw
-        for a in (apps.values() if isinstance(apps, dict) else apps or []):
-            if isinstance(a, dict) and a.get("name") and a.get("icon") and re.fullmatch(r"[\w.() -]{1,100}", str(a["icon"])):
-                found.setdefault(norm(a["name"]), HEIMDALL + "icons/" + urllib.parse.quote(str(a["icon"])))
-    except (ValueError, AttributeError, TypeError):
-        found = {}
-    if found:
-        HM.update(map=found, t=time.time(), ok=True)
-        write_json(HM_FILE, {"t": HM["t"], "map": found})
-    else:
-        HM.update(map=cached.get("map", {}) if isinstance(cached, dict) else {}, t=time.time() - week + 600, ok=False)
-    return HM["map"]
-
-
-def icon_candidates(name):
+def icon_candidates(name):  # the chosen collection only (Settings > About); icon names are lowercase with hyphens
+    label, base = ICON_SOURCES[conf()["icon_source"]]
     out, n, sl = [], norm(name), slug(name)
-    if heimdall_map().get(n):
-        out.append(("Heimdall", heimdall_map()[n]))
     for k in dict.fromkeys([sl, n]):
         if k:
-            out += [("Dashboard Icons", f"{DASH_ICONS}svg/{k}.svg"), ("Dashboard Icons", f"{DASH_ICONS}png/{k}.png"),
-                    ("selfh.st", f"{SELFHST}svg/{k}.svg"), ("selfh.st", f"{SELFHST}png/{k}.png")]
+            out += [(label, f"{base}svg/{k}.svg"), (label, f"{base}png/{k}.png")]
     return out
+
+
+def clear_icons():  # cached icons and remembered misses; icons are fetched again when needed
+    files = os.listdir(ICON_DIR) if os.path.isdir(ICON_DIR) else []
+    for f in files:
+        os.remove(os.path.join(ICON_DIR, f))
+    return len([f for f in files if f.rsplit(".", 1)[-1] in MIME])
 
 
 def icon_path(key):
@@ -775,7 +901,7 @@ def resolve_icon(name):  # find an icon for an app name and keep a copy; remembe
     miss_file = os.path.join(ICON_DIR, key + ".none")
     miss = read_json(miss_file, None)
     if isinstance(miss, dict) and time.time() - miss.get("t", 0) < (7 * 86400 if miss.get("why") == "missing" else 600):
-        return {"found": False, "why": miss.get("why", "missing"), "heimdall": "ok" if HM["ok"] else "unreachable"}
+        return {"found": False, "why": miss.get("why", "missing")}
     if not icon_sem.acquire(timeout=15):
         return {"found": False, "why": "busy"}
     try:
@@ -795,7 +921,7 @@ def resolve_icon(name):  # find an icon for an app name and keep a copy; remembe
                 return {"found": True, "source": source}
         why = "network" if net else "missing"
         write_json(miss_file, {"t": time.time(), "why": why})
-        return {"found": False, "why": why, "heimdall": "ok" if HM["ok"] else "unreachable"}
+        return {"found": False, "why": why}
     finally:
         icon_sem.release()
 
@@ -823,7 +949,9 @@ def get_icon():
     name = request.args.get("name", "")[:100]
     p = icon_path(norm(name))
     if not p:
-        queue_icon(name)
+        d = read_json(os.path.join(DATA, "dash.json"), {})  # only apps on the Apps page are looked up, so nobody can make the server fetch or store arbitrary names
+        if isinstance(d, dict) and norm(name) in {norm(a.get("name", "")) for a in (d.get("apps") or {}).values() if isinstance(a, dict)}:
+            queue_icon(name)
         return bad("No icon yet.", 404)
     r = send_file(p, mimetype=MIME[p.rsplit(".", 1)[1]])
     r.headers["Cache-Control"] = "private, max-age=86400"
@@ -846,11 +974,110 @@ def vendor(name):  # Chart.js is bundled into the image when it's built, so the 
     return r
 
 
+def folder_size(path):
+    return sum(os.path.getsize(os.path.join(r, f)) for r, _, fs in os.walk(path) for f in fs if os.path.exists(os.path.join(r, f)))
+
+
+@app.get("/api/storage")
+def storage():  # admin: how much room the history and the icon cache take
+    db = sum(os.path.getsize(DB + x) for x in ("", "-wal", "-shm", "-journal") if os.path.exists(DB + x))
+    n_s, first_s, n_p, first_p = sql("SELECT (SELECT COUNT(*) FROM samples), (SELECT MIN(ts) FROM samples), (SELECT COUNT(*) FROM pings), (SELECT MIN(ts) FROM pings)")[0]
+    reusable = sql("PRAGMA freelist_count")[0][0] * sql("PRAGMA page_size")[0][0]
+    files = [os.path.join(ICON_DIR, f) for f in os.listdir(ICON_DIR)] if os.path.isdir(ICON_DIR) else []
+    firsts, disk = [t for t in (first_s, first_p) if t], shutil.disk_usage(DATA)
+    return jsonify(db={"bytes": db, "reusable": reusable, "samples": n_s, "pings": n_p, "since": min(firsts) if firsts else None},
+                   icons={"bytes": sum(os.path.getsize(f) for f in files), "count": len([f for f in files if f.rsplit(".", 1)[-1] in MIME])},
+                   data={"bytes": folder_size(DATA)}, disk={"free": disk.free, "total": disk.total}, retention_days=retention())
+
+
+def known_keys():  # [(hostname, key type, base64 key)] as stored in known_hosts
+    if not os.path.exists(KNOWN_HOSTS):
+        return []
+    with open(KNOWN_HOSTS) as f:
+        return [tuple(p[:3]) for p in (line.split() for line in f if not line.startswith("#")) if len(p) >= 3]
+
+
+def fingerprint(b64):  # the usual SHA256:... form shown by ssh
+    try:
+        return "SHA256:" + base64.b64encode(hashlib.sha256(base64.b64decode(b64)).digest()).decode().rstrip("=")
+    except ValueError:
+        return ""
+
+
+@app.get("/api/hostkeys")
+def list_hostkeys():  # admin: the SSH keys Beacon has pinned, matched to your devices by address
+    names = {}
+    for d in devices():
+        names.setdefault(d["host"], d["name"])
+    with hklock:
+        rows = known_keys()
+    out = [{"host": h, "name": names.get(h[1:].split("]")[0] if h.startswith("[") else h, ""), "type": t, "fingerprint": fingerprint(k)} for h, t, k in rows]
+    return jsonify(keys=sorted(out, key=lambda x: (not x["name"], (x["name"] or x["host"]).lower())))  # your devices first, then keys for addresses no longer in the list
+
+
+@app.post("/api/hostkeys/forget")
+@locked
+def forget_hostkeys():  # admin: those devices are trusted again the next time they are polled
+    j = request.get_json(silent=True) or {}
+    everyone, hosts = j.get("all") is True, j.get("hosts")
+    if not everyone and not (isinstance(hosts, list) and hosts and all(isinstance(h, str) for h in hosts)):
+        return bad("Choose at least one device.")
+    with hklock:
+        if not os.path.exists(KNOWN_HOSTS):
+            return jsonify(ok=True, removed=0)
+        with open(KNOWN_HOSTS) as f:
+            lines = f.read().splitlines()
+        keep, removed = [], 0
+        for line in lines:
+            p = line.split()
+            if len(p) >= 3 and not line.startswith("#") and (everyone or p[0] in hosts):
+                removed += 1
+            else:
+                keep.append(line)
+        if any(len(l.split()) >= 3 and not l.startswith("#") for l in keep):
+            tmp = KNOWN_HOSTS + ".tmp"
+            with open(tmp, "w") as f:
+                f.write("\n".join(keep) + "\n")
+            os.chmod(tmp, 0o600)
+            os.replace(tmp, KNOWN_HOSTS)
+        else:
+            os.remove(KNOWN_HOSTS)
+    return jsonify(ok=True, removed=removed)
+
+
+@app.get("/api/security")
+def security():  # admin: the values the Security page shows
+    return jsonify(max_attempts=conf()["max_attempts"])
+
+
+@app.post("/api/storage/purge")
+@locked
+def purge():
+    what = (request.get_json(silent=True) or {}).get("what")
+    if what == "icons":  # icons are fetched again when needed
+        return jsonify(ok=True, removed=clear_icons())
+    if what == "history":  # graphs start again from now; devices, servers and settings stay
+        n = sql("SELECT (SELECT COUNT(*) FROM samples) + (SELECT COUNT(*) FROM pings)")[0][0]
+        sql("DELETE FROM samples")
+        sql("DELETE FROM pings")
+        prev.clear()
+        sql("VACUUM")
+        return jsonify(ok=True, removed=n)
+    if what == "compact":  # hand freed space back to the disk
+        sql("VACUUM")
+        return jsonify(ok=True)
+    return bad("Unknown action.")
+
+
 @app.post("/api/activity")
 def activity():  # the page reports that someone is really using it
     return jsonify(ok=True)
 
 
+for _f in ("heimdall.json", "heimdall.json.bak"):  # left over from versions that also used Heimdall's app list
+    if os.path.exists(os.path.join(DATA, _f)):
+        os.remove(os.path.join(DATA, _f))
+migrate()
 threading.Thread(target=loop, daemon=True).start()
 threading.Thread(target=icon_worker, daemon=True).start()
 for _a in (read_json(os.path.join(DATA, "dash.json"), {}).get("apps", {}) if isinstance(read_json(os.path.join(DATA, "dash.json"), {}), dict) else {}).values():
