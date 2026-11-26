@@ -100,7 +100,7 @@ h1{display:flex;align-items:center;gap:.5rem}
 .av{display:grid;place-items:center;width:1.6rem;height:1.6rem;border-radius:50%;background:var(--blue);color:var(--on-blue);font-style:normal;font-size:.8rem;font-weight:600}
 dialog{padding:0;border:1px solid var(--rule);border-radius:var(--r);color:var(--ink);background:color-mix(in srgb,var(--field) 80%,transparent);backdrop-filter:blur(40px) saturate(180%);-webkit-backdrop-filter:blur(40px) saturate(180%);box-shadow:var(--sh);width:min(780px,94vw);height:min(620px,90vh);overflow:hidden}
 dialog[open]{display:grid;grid-template-columns:11.5rem 1fr}
-#kd,#xd,#ud{width:min(480px,94vw);height:auto;max-height:85vh;overflow:auto}#ud{width:min(660px,94vw)}#kd[open],#xd[open],#ud[open]{display:block}#xd,#ud{height:fit-content}#xd label,#ud label{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin:.55rem 0}#xd input:not([type=checkbox]){width:min(14rem,100%)}#ud input:not([type=checkbox]){width:min(18rem,100%)}#ud label.chk{justify-content:flex-start}.ds{border:1px solid var(--rule);border-radius:var(--r);padding:.8rem .9rem;margin:.7rem 0;display:grid;grid-template-columns:1fr 1fr;gap:.55rem .8rem}.ds .wide{grid-column:1/-1}#ud .ds label{display:grid;gap:.2rem;margin:0;font-size:.82rem;color:var(--mute);justify-content:stretch}#ud .ds label.chk{display:flex;align-items:center;align-self:end;color:var(--ink);font-size:.9rem;padding-bottom:.45rem}#ud .ds input:not([type=checkbox]){width:100%;color:var(--ink)}#ud .sf{position:sticky;bottom:-1.2rem;margin:.8rem -1.4rem -1.2rem;padding:.75rem 1.4rem;border-top:1px solid var(--rule);background:color-mix(in srgb,var(--field) 92%,transparent);backdrop-filter:blur(12px)}.dr{display:flex;gap:.6rem;align-items:center;justify-content:flex-end}.dr .f-res{flex:1;min-width:0;margin:0}.sbody section.uni{align-content:stretch;grid-template-rows:auto 1fr auto;min-height:100%}#u-foot{position:sticky;bottom:-1.25rem;margin:0 -1.5rem -1.25rem;padding:.75rem 1.5rem;display:flex;justify-content:space-between;align-items:center;gap:.6rem;border-top:1px solid var(--rule);background:color-mix(in srgb,var(--field) 88%,transparent);backdrop-filter:blur(12px)}.us{border:1px solid var(--rule);border-radius:var(--r);padding:.8rem 1rem;display:grid;gap:.55rem}.uh{display:flex;justify-content:space-between;align-items:center;gap:.8rem}.uh small{color:var(--mute)}.neon{--nc:#39ff88;display:inline-block;padding:.12rem .85rem;border-radius:999px;border:1px solid var(--nc);background:#0b0e14;color:var(--nc);font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;text-shadow:0 0 3px var(--nc),0 0 9px var(--nc),0 0 18px var(--nc);box-shadow:0 0 7px color-mix(in srgb,var(--nc) 60%,transparent),inset 0 0 7px color-mix(in srgb,var(--nc) 28%,transparent)}.neon.err{--nc:#ff4d6d}.neon.wait{--nc:#ffb02e}@keyframes flick{0%,18%,22%,62%,64%,100%{opacity:1}20%,63%{opacity:.5}}.neon.err,.neon.wait{animation:flick 3.2s infinite}@media(prefers-reduced-motion:reduce){.neon{animation:none!important}}.xr{display:flex;gap:.6rem;align-items:center;justify-content:space-between;margin-top:.8rem}.xr span{margin-left:auto}.kb{padding:1.2rem 1.4rem}.kr{display:flex;gap:.7rem;align-items:flex-start;padding:.5rem 0;border-bottom:1px solid var(--rule);cursor:pointer}.kr input{margin-top:.25rem}.kr small{display:block;opacity:.7;overflow-wrap:anywhere}#klist{max-height:40vh;overflow:auto}
+#kd,#ud,#cd{width:min(480px,94vw);height:auto;max-height:85vh;overflow:auto}#ud{width:min(660px,94vw)}#cd{width:min(440px,94vw)}#kd[open],#ud[open],#cd[open]{display:block}#ud,#cd{height:fit-content}#ud label{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin:.55rem 0}#ud input:not([type=checkbox]){width:min(18rem,100%)}#ud label.chk{justify-content:flex-start}.ds{border:1px solid var(--rule);border-radius:var(--r);padding:.8rem .9rem;margin:.7rem 0;display:grid;grid-template-columns:1fr 1fr;gap:.55rem .8rem}.ds .wide{grid-column:1/-1}#ud .ds label{display:grid;gap:.2rem;margin:0;font-size:.82rem;color:var(--mute);justify-content:stretch}#ud .ds label.chk{display:flex;align-items:center;align-self:end;color:var(--ink);font-size:.9rem;padding-bottom:.45rem}#ud .ds input:not([type=checkbox]){width:100%;color:var(--ink)}#ud .sf{position:sticky;bottom:-1.2rem;margin:.8rem -1.4rem -1.2rem;padding:.75rem 1.4rem;border-top:1px solid var(--rule);background:color-mix(in srgb,var(--field) 92%,transparent);backdrop-filter:blur(12px)}.dr{display:flex;gap:.6rem;align-items:center;justify-content:flex-end}.dr .f-res{flex:1;min-width:0;margin:0}.sbody section.uni{align-content:stretch;grid-template-rows:auto 1fr auto;min-height:100%}#u-foot{position:sticky;bottom:-1.25rem;margin:0 -1.5rem -1.25rem;padding:.75rem 1.5rem;display:flex;justify-content:space-between;align-items:center;gap:.6rem;border-top:1px solid var(--rule);background:color-mix(in srgb,var(--field) 88%,transparent);backdrop-filter:blur(12px)}.us{border:1px solid var(--rule);border-radius:var(--r);padding:.8rem 1rem;display:grid;gap:.55rem}.uh{display:flex;justify-content:space-between;align-items:center;gap:.8rem}.uh small{color:var(--mute)}.neon{--nc:#39ff88;display:inline-block;padding:.12rem .85rem;border-radius:999px;border:1px solid var(--nc);background:#0b0e14;color:var(--nc);font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;text-shadow:0 0 3px var(--nc),0 0 9px var(--nc),0 0 18px var(--nc);box-shadow:0 0 7px color-mix(in srgb,var(--nc) 60%,transparent),inset 0 0 7px color-mix(in srgb,var(--nc) 28%,transparent)}.neon.err{--nc:#ff4d6d}.neon.wait{--nc:#ffb02e}@keyframes flick{0%,18%,22%,62%,64%,100%{opacity:1}20%,63%{opacity:.5}}.neon.err,.neon.wait{animation:flick 3.2s infinite}@media(prefers-reduced-motion:reduce){.neon{animation:none!important}}.tile.list .c4,.tile.list .lh .hs[data-c="4"]{display:none}.tile.list.msite .c4,.tile.list.msite .lh .hs[data-c="4"]{display:block}.tile.list.msite .lh,.tile.list.msite .lr{grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1.2fr) minmax(0,.8fr) minmax(0,.8fr) 1rem}.msite .lh .hs[data-c="0"],.msite .lr .nm{order:-2}.msite .lh .hs[data-c="4"],.msite .lr .c4{order:-1}.sitef{margin-left:auto;max-width:11rem}@container(max-width:560px){.tile.list.msite .lh .hs[data-c="4"],.tile.list.msite .lr .c4{display:none}.tile.list.msite:not(.apps) .lh,.tile.list.msite:not(.apps) .lr{grid-template-columns:minmax(0,1.3fr) minmax(0,1.3fr) 3rem .8rem;gap:.5rem}}.cl{list-style:none;margin:.7rem 0 0;padding:0;max-height:50vh;overflow:auto}.cl li{display:grid;grid-template-columns:auto 1fr auto auto;gap:.6rem;align-items:center;padding:.5rem .2rem;border-bottom:1px solid var(--rule)}.cl li:last-child{border:0}.tag{font-size:.72rem;padding:.1rem .6rem;border-radius:999px;background:color-mix(in srgb,var(--blue) 14%,transparent);color:var(--blue)}.kb{padding:1.2rem 1.4rem}.kr{display:flex;gap:.7rem;align-items:flex-start;padding:.5rem 0;border-bottom:1px solid var(--rule);cursor:pointer}.kr input{margin-top:.25rem}.kr small{display:block;opacity:.7;overflow-wrap:anywhere}#klist{max-height:40vh;overflow:auto}
 dialog::backdrop{background:rgba(0,0,0,.28);backdrop-filter:blur(4px)}
 #sn{display:flex;flex-direction:column;gap:2px;padding:1rem .75rem;border-right:1px solid var(--rule)}
 #sn button{text-align:left;border:0;background:none;color:var(--mute)}#sn button[aria-current=true]{background:color-mix(in srgb,var(--blue) 16%,transparent);color:var(--ink)}
@@ -249,23 +249,14 @@ textarea{font:inherit;padding:.5rem .65rem;border:1px solid var(--rule);border-r
 <label>Hover effect <select id="hover"><option value="none">None</option><option value="glow">Glow</option><option value="bounce">Bounce</option></select></label>
 <label id="funRow" class="chk" hidden><input type="checkbox" id="fun"> Extra fun (emoji, sparkles and little animations)</label>
 <label>Show last <select id="range"><option value="15">15 minutes</option><option value="60" selected>1 hour</option><option value="360">6 hours</option><option value="1440">24 hours</option><option value="10080">7 days</option><option value="43200">30 days</option></select></label>
-<label class="chk"><input type="checkbox" id="bands"> Split client counts by band (2.4 / 5 / 6 GHz)</label>
+<label class="chk"><input type="checkbox" id="bands"> Split wireless clients by band (2.4 / 5 / 6 GHz)</label>
 <p class="mute">Saved in this browser only. Mode applies to Honeycrisp; Pastel is always light and Stark always dark.</p></section>
 <section data-s="mon" hidden><h3>Monitoring</h3>
 <div class="row"><label>Network checks every <input id="iv" type="number" min="5" max="3600"> s</label><button id="save" class="pri">Save</button></div>
 <div class="row"><label>Server pings every <input id="siv" type="number" min="5" max="3600"> s</label><button id="ssave" class="pri">Save</button></div>
 <div class="row"><label>Keep history for <input id="ret" type="number" min="1" max="365"> days</label><button id="rsave" class="pri">Save</button></div>
 <p class="mute" style="margin:0">Takes roughly 1 MB per device per day. Shortening this deletes the older history at the next check.</p>
-<span id="mmsg" class="mute"></span>
-<div id="uf" hidden><p style="margin:1rem 0 0"><b>Extra data over SSH</b> <span class="mute">(off by default)</span></p>
-<p class="mute" style="margin:0">The UniFi API doesn't report these two things, so Beacon can ask the devices directly over SSH instead.</p>
-<label class="chk"><input type="checkbox" id="x-poe"> PoE power draw</label>
-<p id="x-poe-w" class="mute" style="margin:0"></p>
-<label class="chk"><input type="checkbox" id="x-bands"> Client counts by band (2.4 / 5 / 6 GHz)</label>
-<p id="x-bands-w" class="mute" style="margin:0"></p>
-<div id="x-login" class="row" hidden style="justify-content:flex-start"><button id="x-open">SSH credentials…</button><span id="x-who" class="mute"></span></div>
-<span id="x-errs" class="bad"></span><span id="xmsg" class="mute"></span></div>
-<p id="uf-off" class="mute" hidden style="margin-top:1rem">Beacon checks every device over SSH. To read them from your UniFi Network application instead, add a site under Settings &gt; UniFi. The options for extra data over SSH appear here once you have.</p></section>
+<span id="mmsg" class="mute"></span></section>
 <section data-s="unifi" class="uni" hidden><h3>UniFi</h3>
 <div><h4 style="margin:0 0 .6rem;font-size:.95rem">Sites</h4><div id="u-list" style="display:grid;gap:.7rem"></div><p id="u-disc" class="mute" style="margin:.8rem 0 0"></p><span id="umsg" class="mute"></span></div>
 <div id="u-foot"><button id="u-cfg">Configure…</button><button id="u-check" disabled>Check for new devices now</button></div></section>
@@ -328,13 +319,7 @@ textarea{font:inherit;padding:.5rem .65rem;border:1px solid var(--rule);border-r
 <div class="dr" style="justify-content:flex-start;margin-top:.4rem"><button type="button" id="ud-forget" hidden title="Devices you removed from the list are skipped by the check. This lets it find them again."></button></div>
 <span id="ud-err" class="err"></span>
 <div class="dr sf"><button type="button" id="ud-x">Cancel</button><button type="button" id="ud-save" class="pri">Save</button></div></div></dialog>
-<dialog id="xd"><div class="kb"><h3>SSH credentials</h3>
-<p class="mute">Used for the extra SSH data, and for any device the UniFi API doesn't know about. Saved in the data folder, readable only by Beacon, and never sent back to the browser.</p>
-<label>User <input id="xd-user" maxlength="64" autocomplete="off"></label>
-<label>Password <input id="xd-pass" type="password" autocomplete="new-password"></label>
-<label>Port <input id="xd-port" type="number" min="1" max="65535" placeholder="22"></label>
-<p id="xd-env" class="mute" hidden></p><span id="xd-err" class="err"></span>
-<div class="xr"><button type="button" id="xd-clear">Remove</button><span><button type="button" id="xd-x">Cancel</button> <button type="button" id="xd-save" class="pri">Save</button></span></div></div></dialog>
+<dialog id="cd"><div class="kb"><h3 id="cd-t"></h3><div id="cd-b"></div><div class="dr" style="margin-top:.9rem"><button type="button" id="cd-ok" class="pri" autofocus>OK</button></div></div></dialog>
 <dialog id="kd"><div class="kb"><h3>Forget SSH host keys</h3>
 <p class="mute">A forgotten device is trusted again the next time Beacon connects to it, so only do this for devices you reset or replaced, on a network you trust.</p>
 <label class="kr"><input type="checkbox" id="kall"><span><b>All devices</b></span></label>
@@ -396,22 +381,22 @@ const NAMES = {network: "Network", servers: "Servers", apps: "Apps"};
 const LISTS = {network: "devices", servers: "servers", apps: "apps"};  // the scrollable list under each tab
 const SZ = {stat: [3, 2], chart: [4, 3], summary: [4, 3], list: [12, 8], app: [2, 2]};
 const CAT = {  // key: [menu group, label, tile type]
-  "n.online": ["Network", "Devices online", "stat"], "n.clients": ["Network", "Clients", "stat"], "n.poe": ["Network", "PoE draw", "stat"],
+  "n.online": ["Network", "Devices online", "stat"], "n.clients": ["Network", "Wireless clients", "stat"], "n.poe": ["Network", "PoE draw", "stat"],
   "n.net": ["Network", "Throughput", "stat"], "n.cpu": ["Network", "Average CPU", "stat"],
   "n.mem": ["Network", "Average memory", "stat"], "n.load": ["Network", "Highest load", "stat"], "n.up": ["Network", "Longest uptime", "stat"],
   "n.c.net": ["Network charts", "Throughput", "chart"], "n.c.use": ["Network charts", "CPU and memory", "chart"],
-  "n.c.clients": ["Network charts", "Clients", "chart"], "n.c.poe": ["Network charts", "PoE draw", "chart"],
+  "n.c.clients": ["Network charts", "Wireless clients", "chart"], "n.c.poe": ["Network charts", "PoE draw", "chart"],
   "s.online": ["Servers", "Servers online", "stat"], "s.avg": ["Servers", "Average ping", "stat"], "s.max": ["Servers", "Slowest ping", "stat"],
   "s.c.ping": ["Server charts", "Ping", "chart"], "a.count": ["Apps", "Apps", "stat"],
 };
-const SUMK = {network: ["n.online", "n.clients", "n.poe", "n.net"], servers: ["s.online", "s.avg", "s.max"], apps: ["a.count"]};
+const SUMK = {network: ["n.online", "n.clients", "n.net"], servers: ["s.online", "s.avg", "s.max"], apps: ["a.count"]};
 const uid = () => Math.random().toString(36).slice(2, 8);
 const T = (type, ref, x, y, w, h) => ({id: uid(), type, ref, x, y, w, h});
 const DEF = {
   home: () => [T("summary", "network", 0, 0, 6, 3), T("summary", "servers", 6, 0, 3, 3), T("summary", "apps", 9, 0, 3, 3)],
 };
 const OV = {  // Network and Servers: one fixed overview panel above the list (not part of the tile grid, not configurable)
-  network: {stats: ["n.online", "n.clients", "n.poe"], chart: "n.c.net"},
+  network: {stats: ["n.online", "n.clients", "n.net"], chart: "n.c.net"},
   servers: {stats: ["s.online", "s.avg", "s.max"], chart: "s.c.ping"},
 };
 let D = {}, DATA = {devices: []}, SERV = {servers: []}, tab = "home", edit = false, iv = 30, siv = 15, timer, stimer, st, bandsOn = false;
@@ -419,6 +404,7 @@ const els = {}, lists = {};
 const tiles = () => ((D.tabs ||= {})[tab] ||= []);
 const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+let SITEF = lsGet("beacon_site") || "";  // the Network tab's site filter: "" = all sites, "__none__" = devices no site answers for
 // list sorting: [column, direction] per list, remembered per user in a cookie
 const SORT0 = () => ({devices: [0, 1], servers: [0, 1], apps: [0, 1]});
 let SORT = SORT0();
@@ -480,7 +466,9 @@ function drag(e, t, el, mode) {
 }
 
 // ---- tracked values: every stat/chart tile reads from these ----
-const live = () => DATA.devices.filter(d => d.series.at(-1) && !d.series.at(-1).error);
+const siteDevs = () => !SITEF ? DATA.devices : DATA.devices.filter(d => (d.site || "__none__") === SITEF);
+const DEVS = () => tab === "network" ? siteDevs() : DATA.devices;  // the Network tab follows the site filter; Home stays network-wide
+const live = () => DEVS().filter(d => d.series.at(-1) && !d.series.at(-1).error);
 const vals = f => live().map(d => d.series.at(-1)[f]).filter(x => x != null);
 const sum = a => a.length ? a.reduce((x, y) => x + y, 0) : null;
 const avg = a => a.length ? sum(a) / a.length : null;
@@ -495,8 +483,8 @@ const split = () => {
   return BANDS.filter(k => b[k] != null).map(k => `${k} GHz ${b[k]}`).join(" · ");
 };
 const STAT = {  // each returns [value or null, detail line]
-  "n.online": () => [`${live().length} of ${DATA.devices.length}`], "n.clients": () => [sum(vals("clients")), split()],
-  "n.poe": () => DATA.has_poe === false ? ["Off", "Turned off in Settings > Monitoring"] : [fm(W, sum(vals("poe")))], "n.net": m => { const r = sum(vals("rx")), s = sum(vals("tx")); return [fm(bps, m === "rx" ? r : m === "tx" ? s : r == null && s == null ? null : (r ?? 0) + (s ?? 0))]; },  // m: total (default), rx or tx
+  "n.online": () => [`${live().length} of ${DEVS().length}`], "n.clients": () => [sum(vals("clients")), split()],
+  "n.poe": () => [fm(W, sum(vals("poe")))], "n.net": m => { const r = sum(vals("rx")), s = sum(vals("tx")); return [fm(bps, m === "rx" ? r : m === "tx" ? s : r == null && s == null ? null : (r ?? 0) + (s ?? 0))]; },  // m: total (default), rx or tx
   "n.cpu": () => [fm(PC, avg(vals("cpu")))], "n.mem": () => [fm(PC, avg(vals("mem")))],
   "n.load": () => [fm(v => v.toFixed(2), mx(vals("load")))], "n.up": () => [fm(up, mx(vals("uptime")))],
   "s.online": () => [`${lat().filter(x => x.ms != null).length} of ${SERV.servers.length}`],
@@ -512,11 +500,11 @@ function agg(lists, field, how, bs) {  // combine one field across devices into 
   const f = {sum: a => a.reduce((p, c) => p + c, 0), avg: a => a.reduce((p, c) => p + c, 0) / a.length}[how];
   return [...m].sort((a, b) => a[0] - b[0]).map(([, a]) => ({ts: a.ts, v: f(a.v)}));
 }
-const NET = () => DATA.devices.map(d => d.series), SRV = () => SERV.servers.map(s => s.series);
+const NET = () => DEVS().map(d => d.series), SRV = () => SERV.servers.map(s => s.series);
 const CHART = {
   "n.c.net": () => ({sets: [["Received", "--blue", agg(NET(), "rx", "sum", iv)], ["Sent", "--amber", agg(NET(), "tx", "sum", iv)]], fmt: bps}),
   "n.c.use": () => ({sets: [["CPU", "--blue", agg(NET(), "cpu", "avg", iv)], ["Memory", "--amber", agg(NET(), "mem", "avg", iv)]], fmt: pct, max: 100}),
-  "n.c.clients": () => ({sets: [["Clients", "--blue", agg(NET(), "clients", "sum", iv)]], fmt: v => Math.round(v)}),
+  "n.c.clients": () => ({sets: [["Wireless clients", "--blue", agg(NET(), "clients", "sum", iv)]], fmt: v => Math.round(v)}),
   "n.c.poe": () => ({sets: [["PoE draw", "--blue", agg(NET(), "poe", "sum", iv)]], fmt: W}),
   "s.c.ping": () => ({sets: [["Average ping", "--blue", agg(SRV(), "ms", "avg", siv)]], fmt: MS}),
 };
@@ -564,7 +552,7 @@ function devFacts(d) {
   if (!s.length) return "<p>Waiting for first sample…</p>";
   if (last.error) return `<p class="bad">Unreachable: ${esc(last.error)}</p>`;
   return `<dl><dt>Model</dt><dd>${esc(info.model)}</dd><dt>Firmware</dt><dd>${esc(info.version)}</dd>
-    <dt>Uptime</dt><dd>${last.uptime ? up(last.uptime) : "–"}</dd>${last.clients != null ? `<dt>Clients</dt><dd>${last.clients}</dd>` + bandRows(last.bands) : ""}
+    <dt>Uptime</dt><dd>${last.uptime ? up(last.uptime) : "–"}</dd>${last.clients != null ? `<dt>Wireless clients</dt><dd>${last.clients}</dd>` + bandRows(last.bands) : ""}
     <dt>Load</dt><dd>${esc(last.load)}</dd>${last.poe != null ? `<dt>PoE draw</dt><dd>${last.poe} W</dd>` : ""}</dl>`;
 }
 function srvFacts(s) {  // works on raw results and on averaged steps (which carry n = results, d = no reply, max)
@@ -577,10 +565,10 @@ function srvFacts(s) {  // works on raw results and on averaged steps (which car
 
 // UniFi-style lists: one row per item, click a row for the details and graphs
 const LIST = {
-  devices: {title: "Devices", add: "+ Add device", head: ["Name", "IP", "Clients", "Load"], items: () => DATA.devices,
-    key: (d, c) => { const l = d.series.at(-1), ok = l && !l.error; return [d.name.toLowerCase(), ipKey(d.host), ok ? l.clients ?? null : null, ok ? l.load ?? null : null][c]; },
+  devices: {title: "Devices", add: "+ Add device", head: ["Name", "IP", "Wireless", "Load", "Site"], items: siteDevs,
+    key: (d, c) => { const l = d.series.at(-1), ok = l && !l.error; return [d.name.toLowerCase(), ipKey(d.host), ok ? l.clients ?? null : null, ok ? l.load ?? null : null, d.site ? d.site.toLowerCase() : null][c]; },
     cells: d => { const l = d.series.at(-1), good = l && !l.error, info = [...d.series].reverse().find(x => x.model) || {};
-      return {sub: info.model || "", ok: l ? !l.error : null, c: [d.host, good && l.clients != null ? l.clients : "–", good && l.load != null ? l.load : "–"]}; },
+      return {sub: info.model || "", ok: l ? !l.error : null, c: [d.host, good && l.clients != null ? l.clients : "–", good && l.load != null ? l.load : "–", d.site || "–"]}; },
     html: `<div class="dev"><div class="f"></div><div class="ch"><canvas></canvas></div><div class="ch"><canvas></canvas></div></div>`,
     mkc: cs => [mk(cs[0], [["CPU", g("--blue")], ["Memory", g("--amber")]], 100, pct), mk(cs[1], [["Received", g("--blue")], ["Sent", g("--amber")]], undefined, bps)],
     fill: (r, d) => {
@@ -619,12 +607,17 @@ function itemForm(kind, item, mount) {
 function mkRow(kind, key) {
   const K = LIST[kind], li = document.createElement("div"), r = {li, open: false}, q = s => li.querySelector(s);
   li.className = "li";
-  li.innerHTML = `<button class="lr" aria-expanded="false"><span class="nm"><i class="dot"></i><b></b><small></small></span><span class="c1"></span><span class="c2"></span><span class="c3"></span><i class="chev">›</i></button><div class="ld" hidden>${K.html}<p class="acts adm"><button class="ed">Edit</button><button class="rmv">Remove</button></p><div class="fm"></div></div>`;
+  li.innerHTML = `<button class="lr" aria-expanded="false"><span class="nm"><i class="dot"></i><b></b><small></small></span><span class="c1"></span><span class="c2"></span><span class="c3"></span><span class="c4"></span><i class="chev">›</i></button><div class="ld" hidden>${K.html}<p class="acts adm"><button class="ed">Edit</button><button class="rmv">Remove</button></p><div class="fm"></div></div>`;
   const item = () => K.items().find(x => x.name === key);
-  q(".lr").onclick = () => {
-    r.open = !r.open; q(".lr").setAttribute("aria-expanded", r.open); q(".ld").hidden = !r.open;
-    if (r.open) { r.charts ||= K.mkc([...li.querySelectorAll("canvas")]); K.fill(r, item()); }
+  const setOpen = on => {
+    r.open = on; q(".lr").setAttribute("aria-expanded", on); q(".ld").hidden = !on;
+    if (on) { r.charts ||= K.mkc([...li.querySelectorAll("canvas")]); K.fill(r, item()); }
     else { r.charts?.forEach(c => c.destroy()); r.charts = null; }
+  };
+  r.close = () => setOpen(false);
+  q(".lr").onclick = () => {
+    if (!r.open) for (const o of Object.values(lists[kind]?.rows || {})) if (o !== r && o.open) o.close();  // one at a time
+    setOpen(!r.open);
   };
   q(".ed").onclick = () => itemForm(kind, item(), q(".fm"));
   q(".rmv").onclick = async () => {
@@ -637,6 +630,7 @@ function renderList(kind) {
   const el = lists[kind];
   if (!el) return;
   paintSort(kind);
+  if (kind === "devices") syncSites(el);
   if (kind === "apps") return renderApps(el);
   const K = LIST[kind], src = K.items(), rows = el.rows ||= {}, box = el.querySelector(".items");
   for (const n in rows) if (!src.some(x => x.name === n)) { rows[n].charts?.forEach(c => c.destroy()); rows[n].li.remove(); delete rows[n]; }
@@ -741,10 +735,20 @@ function setSort(kind, c) {  // click a column header: sort by it, click again t
   SORT[kind] = SORT[kind][0] === c ? [c, -SORT[kind][1]] : [c, 1];
   saveSort(); renderList(kind);
 }
+function syncSites(el) {  // with more than one UniFi site: the Site column and the filter above the list
+  const sel = el.querySelector(".sitef"), names = DATA.sites || [], multi = names.length > 1;
+  sel.hidden = !multi; el.classList.toggle("msite", multi);
+  if (!multi) return;
+  const opts = ["", ...names, ...(DATA.devices.some(d => !d.site) ? ["__none__"] : [])];
+  if (sel.sig !== opts.join("\0")) { sel.innerHTML = opts.map(o => `<option value="${esc(o)}">${o === "" ? "All sites" : o === "__none__" ? "Not in a site" : esc(o)}</option>`).join(""); sel.sig = opts.join("\0"); }
+  sel.value = SITEF;
+}
 function buildList(kind) {  // the scrollable panel under the tiles; not part of the grid
   const K = LIST[kind], el = document.createElement("section"), ed = kind === "apps";
   el.className = "tile list" + (ed ? " apps" : "");
-  el.innerHTML = `<div class="th"><span class="title">${K.title}</span><button class="add ${ed ? "edt" : "adm"}">${K.add}</button></div><div class="addfm"></div><div class="lh">${K.head.map((x, i) => x ? `<button class="hs" data-c="${i}">${x}<i></i></button>` : "<span></span>").join("")}${ed ? "" : "<span></span>"}</div><div class="items"></div><p class="mute none2" style="padding:.9rem" hidden>Nothing here yet.<span class="${ed ? "edt" : "adm"}"> Use ${K.add} to add one.</span></p>`;
+  el.innerHTML = `<div class="th"><span class="title">${K.title}</span>${kind === "devices" ? `<select class="sitef" aria-label="Filter by site" hidden></select>` : ""}<button class="add ${ed ? "edt" : "adm"}">${K.add}</button></div><div class="addfm"></div><div class="lh">${K.head.map((x, i) => x ? `<button class="hs" data-c="${i}">${x}<i></i></button>` : "<span></span>").join("")}${ed ? "" : "<span></span>"}</div><div class="items"></div><p class="mute none2" style="padding:.9rem" hidden>Nothing here yet.<span class="${ed ? "edt" : "adm"}"> Use ${K.add} to add one.</span></p>`;
+  const sf = el.querySelector(".sitef");
+  if (sf) sf.onchange = () => { SITEF = sf.value; lsSet("beacon_site", SITEF); renderGrid(); };
   el.querySelector(".lh").onclick = e => { const b = e.target.closest(".hs"); if (b) setSort(kind, +b.dataset.c); };
   el.querySelector(".add").onclick = () => ed ? appForm(null, el.querySelector(".addfm")) : itemForm(kind, null, el.querySelector(".addfm"));
   return el;
@@ -883,7 +887,8 @@ async function load() {
     DATA = await api("GET", `/api/data?minutes=${RANGE}`);
     if (!ME) return;
     fitRange();
-    $("#bands").closest("label").hidden = DATA.has_bands === false;  // in API mode the band split only exists when its SSH extra is on
+    if (!(DATA.sites || []).length || (SITEF && SITEF !== "__none__" && !DATA.sites.includes(SITEF))) SITEF = "";  // a site that no longer exists is no longer a filter
+    $("#bands").closest("label").hidden = !DATA.devices.some(d => d.series.at(-1)?.bands);  // only devices checked over SSH report bands
     if (document.activeElement !== $("#ret")) $("#ret").value = DATA.retention_days;
     iv = DATA.interval; siv = DATA.server_interval; $("#ver").textContent = "Version " + DATA.version;
     if (document.activeElement !== $("#iv")) $("#iv").value = iv;
@@ -1074,13 +1079,12 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") $("#um").hid
 $("#so").onclick = signOut;
 
 // settings dialog
-const clearNotes = () => ["mmsg", "xmsg", "umsg", "ud-err", "imsg", "amsg", "hkmsg", "kerr", "bmsg", "perr", "uerr", "fb-msg", "st-msg"].forEach(i => note("#" + i, ""));
+const clearNotes = () => ["mmsg", "umsg", "ud-err", "imsg", "amsg", "hkmsg", "kerr", "bmsg", "perr", "uerr", "fb-msg", "st-msg"].forEach(i => note("#" + i, ""));
 function showSec(s) {
   clearNotes();
   $("#sd").querySelectorAll("[data-s]").forEach(e => e.tagName === "SECTION" ? e.hidden = e.dataset.s !== s : e.setAttribute("aria-current", e.dataset.s === s));
   uStop();
   if (s === "unifi") { loadUnifi(); uTimer = setInterval(loadUnifi, 10000); }
-  if (s === "mon") loadMon();
   if (s === "users") loadUsers();
   if (s === "fb") fbInit();
   if (s === "about" && can(3)) loadStorage();
@@ -1112,25 +1116,32 @@ function renderUnifi() {
 <dl><dt>Controller</dt><dd>${esc(s.kind)}${s.version ? " · Network " + esc(s.version) : ""}</dd><dt>Last contact</dt><dd title="${s.last_ok ? esc(new Date(s.last_ok * 1000).toLocaleString()) : ""}">${agoT(s.last_ok)}</dd><dt>Devices</dt><dd>${esc(s.devices)}${s.matched != null ? ` (${s.matched} in your list)` : ""}</dd></dl>
 ${s.error ? `<div class="bad">${esc(s.error)}</div>` : ""}${s.warn ? `<div class="mute">${esc(s.warn)}</div>` : ""}</div>`).join("")
     : `<p class="mute" style="margin:0">No sites yet. Choose Configure… to connect a UniFi Network application.</p>`;
-  const probs = Object.entries(d.last_errors || {}).map(([n, m]) => `${n}: ${m}`).join(" ");
   $("#u-disc").textContent = !sites.length ? "" : !d.enabled ? "Automatic checks for new devices are off."
-    : `Looks for new devices ${d.mode === "hours" ? `every ${d.hours} h` : `daily at ${d.at}`} (server time ${UNI.server_time}). ` + (d.last_run ? `Last check ${agoT(d.last_run).toLowerCase()}${(d.last_added || []).length ? `, added ${d.last_added.join(", ")}` : ", nothing new"}. ` : "")
-      + (d.next ? (d.next <= nowS() ? "Next check is due now." : `Next check in ${dur(d.next - nowS())}.`) : "") + (probs ? " Problems: " + probs : "");
+    : `Looks for new devices ${d.mode === "hours" ? `every ${d.hours} h` : `daily at ${d.at}`} (server time ${UNI.server_time}). ` + (d.last_run ? `Last check ${agoT(d.last_run).toLowerCase()}${(d.last_added || []).length ? `, ${d.last_added.length} new device${d.last_added.length === 1 ? "" : "s"} added` : ", nothing new"}. ` : "")
+      + (d.next ? (d.next <= nowS() ? "Next check is due now." : `Next check in ${dur(d.next - nowS())}.`) : "");
   $("#u-check").disabled = !sites.length;
 }
 async function loadUnifi() {
   try { const r = await api("GET", "/api/unifi"); UNI = {...r, skew: r.now - Date.now() / 1000}; renderUnifi(); }
   catch (x) { note("#umsg", x.message); }
 }
+function showFound(r) {  // the result of a manual device check, as a small popup
+  const n = r.added.length, probs = Object.entries(r.errors || {}), multi = UNI.sites.length > 1;
+  $("#cd-t").textContent = n ? `${n} new device${n === 1 ? "" : "s"} added` : probs.length ? "Couldn't check every site" : "No new devices found";
+  $("#cd-b").innerHTML = (n ? `<ul class="cl">${r.added.map(x => `<li><i class="dot up"></i><b>${esc(x.name)}</b><span class="mute">${esc(x.host)}</span>${multi ? `<span class="tag">${esc(x.site)}</span>` : "<span></span>"}</li>`).join("")}</ul>`
+    : probs.length ? "" : `<p class="mute" style="margin:.5rem 0 0">Everything your sites know about is already in your list.</p>`) + probs.map(([s, m]) => `<p class="bad" style="margin:.6rem 0 0">${esc(s)}: ${esc(m)}</p>`).join("");
+  $("#cd").showModal();
+}
+$("#cd-ok").onclick = () => $("#cd").close();
 $("#u-check").onclick = async e => {
-  const b = e.currentTarget; b.disabled = true; note("#umsg", "Checking…", 60000);
+  const b = e.currentTarget; b.disabled = true; b.textContent = "Checking…";
   try {
-    const r = await api("POST", "/api/unifi/discover"), probs = Object.entries(r.errors).map(([n, m]) => `${n}: ${m}`).join(" ");
-    note("#umsg", (r.added.length ? `Added ${r.added.length} new device${r.added.length === 1 ? "" : "s"}: ${r.added.join(", ")}.` : "No new devices found.") + (probs ? " " + probs : ""), 15000);
-    if (r.added.length) refresh();
+    const r = await api("POST", "/api/unifi/discover");
+    showFound(r);
+    if (r.added.length) { refresh(); setTimeout(refresh, 5000); }  // the new devices get their first sample a moment later
     loadUnifi();
   } catch (x) { note("#umsg", x.message); }
-  b.disabled = !UNI.sites.length;
+  b.textContent = "Check for new devices now"; b.disabled = !UNI.sites.length;
 };
 const rowHTML = s => `<div class="ds" data-id="${esc(s.id || "")}">
 <label>Name <input class="f-name" maxlength="40" value="${esc(s.name || "")}"></label>
@@ -1178,58 +1189,8 @@ $("#ud-x").onclick = () => $("#ud").close();
 $("#ud-save").onclick = async () => {
   try {
     await api("PUT", "/api/unifi", {sites: [...document.querySelectorAll("#ud-sites .ds")].map(rowData), discover: {enabled: $("#ud-auto").checked, mode: $("#ud-mode").value, hours: $("#ud-hours").value, at: $("#ud-at").value}});
-    $("#ud").close(); note("#umsg", "Saved."); loadUnifi(); loadMon(); refresh();
+    $("#ud").close(); note("#umsg", "Saved."); loadUnifi(); refresh();
   } catch (x) { note("#ud-err", x.message); }
-};
-
-// monitoring: the optional SSH extras
-let MON = {};
-const xOn = () => $("#x-poe").checked || $("#x-bands").checked;
-function xSync() {
-  $("#x-login").hidden = !xOn();
-  const u = (MON.ssh || {}).user;
-  $("#x-who").textContent = u ? `Signing in as ${u}.` : "No SSH login saved yet. Add one so these can work.";
-}
-async function loadMon() {
-  try {
-    MON = await api("GET", "/api/monitoring");
-    $("#uf").hidden = !MON.configured; $("#uf-off").hidden = !!MON.configured;
-    $("#x-poe").checked = MON.poe_ssh; $("#x-bands").checked = MON.bands_ssh;
-    const every = `every ${iv} s`;
-    $("#x-poe-w").textContent = `Impact: opens an SSH session to each switch and gateway ${every}. With many devices that adds CPU load on Beacon and on those devices, and more network traffic.`;
-    $("#x-bands-w").textContent = `Impact: opens an SSH session to each access point ${every}, with the same extra load and traffic.`;
-    $("#x-errs").textContent = Object.entries(MON.errors || {}).map(([n, m]) => `${n}: ${m}`).join(" ");
-    xSync();
-  } catch (x) { note("#xmsg", x.message); }
-}
-const xToggle = key => async e => {
-  xSync();
-  try { await api("POST", "/api/settings", {[key]: e.target.checked}); loadMon(); refresh(); }
-  catch (x) { e.target.checked = !e.target.checked; xSync(); note("#xmsg", x.message); }
-};
-$("#x-poe").onchange = xToggle("poe_ssh");
-$("#x-bands").onchange = xToggle("bands_ssh");
-const ENVN = {user: "SSH_USER", password: "SSH_PASSWORD", key_file: "SSH_KEY_FILE", port: "SSH_PORT"};
-$("#x-open").onclick = () => {
-  const s = MON.ssh || {};
-  $("#xd-user").value = s.user || ""; $("#xd-port").value = s.port && s.port !== 22 ? s.port : ""; $("#xd-pass").value = "";
-  $("#xd-pass").placeholder = s.password ? "Saved. Leave blank to keep it" : "Password";
-  const env = (s.env || []).map(k => ENVN[k]);
-  $("#xd-env").hidden = !env.length; $("#xd-env").textContent = `${env.join(", ")} ${env.length === 1 ? "is" : "are"} set in the environment and override${env.length === 1 ? "s" : ""} what you enter here.`;
-  $("#xd-clear").hidden = !s.user; note("#xd-err", ""); $("#xd").showModal();
-};
-$("#xd-x").onclick = () => $("#xd").close();
-$("#xd").onclick = e => { if (e.target === $("#xd")) $("#xd").close(); };
-$("#xd-save").onclick = async () => {
-  try {
-    await api("POST", "/api/ssh-login", {user: $("#xd-user").value, password: $("#xd-pass").value, port: $("#xd-port").value});
-    $("#xd").close(); note("#xmsg", "Saved."); loadMon();
-  } catch (x) { note("#xd-err", x.message); }
-};
-$("#xd-clear").onclick = async () => {
-  if (!confirm("Remove the saved SSH login? Anything that needs one will fail until you add another (or set SSH_USER in the environment).")) return;
-  try { await api("POST", "/api/ssh-login", {clear: true}); $("#xd").close(); note("#xmsg", "Removed."); loadMon(); }
-  catch (x) { note("#xd-err", x.message); }
 };
 
 const bytes = n => n < 1024 ? n + " B" : n < 1048576 ? (n / 1024).toFixed(0) + " KB" : n < 1073741824 ? (n / 1048576).toFixed(1) + " MB" : (n / 1073741824).toFixed(2) + " GB";

@@ -9,7 +9,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 DATA = os.environ.get("DATA_DIR", "/data")
 VERSION = "1.0.0"
 DEFAULT_REPO = os.environ.get("GITHUB_REPO") or "matt-waldeck/beacon"  # where the Feedback page sends people
-CFG, SET, DB, DEV, SRV, SSHF, UNIF = (os.path.join(DATA, n) for n in ("config.json", "settings.json", "stats.db", "devices.json", "servers.json", "ssh.json", "unifi.json"))
+CFG, SET, DB, DEV, SRV, UNIF = (os.path.join(DATA, n) for n in ("config.json", "settings.json", "stats.db", "devices.json", "servers.json", "unifi.json"))
 # Read-only /proc reads work on every UniFi device; mca-dump adds model/firmware/client count where present.
 CMD = "for f in uptime loadavg meminfo stat net/dev; do echo @@$f; cat /proc/$f; done; echo @@mca; mca-dump 2>/dev/null"
 app, wake, swake, dblock, prev = Flask(__name__), threading.Event(), threading.Event(), threading.Lock(), {}
@@ -69,11 +69,6 @@ def env_ssh():
     return e
 
 
-def ssh_login():  # the shared SSH login: config.json "ssh" block, then the one saved in Settings, then SSH_* env vars; a device's own keys win
-    saved = read_json(SSHF, {})
-    return {**cfg().get("ssh", {}), **(saved if isinstance(saved, dict) else {}), **env_ssh()}
-
-
 PATHS = {"devices": DEV, "servers": SRV}
 
 
@@ -102,7 +97,7 @@ def whole(v, default, lo, hi):  # a hand-edited or damaged setting falls back to
 def conf():
     s = read_json(SET, {})
     s = s if isinstance(s, dict) else {}
-    return {"interval": whole(s.get("interval", cfg().get("interval", 30)), 30, 5, 3600), "server_interval": whole(s.get("server_interval", 15), 15, 5, 3600), "guest": bool(s.get("guest", False)), "idle_minutes": whole(s.get("idle_minutes", 10), 10, 0, 1440), "max_attempts": whole(s.get("max_attempts", 5), 5, 1, 20), "repo": str(s.get("repo", "")), "retention_days": s.get("retention_days"), "poe_ssh": s.get("poe_ssh") is True, "bands_ssh": s.get("bands_ssh") is True, "icon_source": s.get("icon_source") if s.get("icon_source") in ICON_SOURCES else DEFAULT_ICONS}
+    return {"interval": whole(s.get("interval", cfg().get("interval", 30)), 30, 5, 3600), "server_interval": whole(s.get("server_interval", 15), 15, 5, 3600), "guest": bool(s.get("guest", False)), "idle_minutes": whole(s.get("idle_minutes", 10), 10, 0, 1440), "max_attempts": whole(s.get("max_attempts", 5), 5, 1, 20), "repo": str(s.get("repo", "")), "retention_days": s.get("retention_days"), "icon_source": s.get("icon_source") if s.get("icon_source") in ICON_SOURCES else DEFAULT_ICONS}
 
 
 def interval():
@@ -197,9 +192,9 @@ class TrustFirst(paramiko.MissingHostKeyPolicy):
         client._host_keys.add(hostname, key.get_name(), key)  # lets this connection carry on
 
 
-def ssh_run(d, cmd=CMD):
+def ssh_run(d):
     if "user" not in d:
-        raise ValueError("No SSH user set: enter one in Settings > Monitoring, or use SSH_USER or the ssh block in config.json.")
+        raise ValueError("No SSH user set: use SSH_USER or the ssh block in config.json.")
     c = paramiko.SSHClient()
     with hklock:
         if os.path.exists(KNOWN_HOSTS):
@@ -208,7 +203,7 @@ def ssh_run(d, cmd=CMD):
     c.connect(d["host"], port=d.get("port", 22), username=d["user"], password=d.get("password"),
               key_filename=d.get("key_file"), timeout=8, look_for_keys=False, allow_agent=False)
     try:
-        return c.exec_command(cmd, timeout=20)[1].read().decode(errors="replace")
+        return c.exec_command(CMD, timeout=20)[1].read().decode(errors="replace")
     finally:
         c.close()
 
@@ -279,7 +274,7 @@ def poll(d):
 # (or one more from UNIFI_URL and UNIFI_API_KEY). With none set up everything is polled over SSH as before.
 RATE_MUL = 1  # the API's uplink rates are read as bits per second (a third-party client documents them so; UniFi's own spec doesn't say). Use 8 if they turn out to be bytes.
 API_NAMES = {}  # device name -> id of the site that answered for it last cycle
-UF = {"conn": {}, "state": {}, "xerr": {}}  # per site id: where its API lives and how the last check went; SSH-extras problems per device
+UF = {"conn": {}, "state": {}}  # per site id: where its API lives and how the last check went
 dlock = threading.Lock()  # one device check at a time
 
 
@@ -340,15 +335,12 @@ def unreachable(url, e):  # says where Beacon looked and, for the usual mistakes
     host, port = u.hostname or "?", u.port or (443 if u.scheme == "https" else 80)
     why, at = getattr(e, "reason", e), f"{host}:{port}"
     if isinstance(why, ConnectionRefusedError):
-        hint = f"Nothing is listening on port {port} there. Check the port in the address (a self-hosted Network application is usually on 8443)"
-        if host in ("localhost", "127.0.0.1", "::1"):
-            hint += "; inside Docker, localhost is Beacon's own container, so use the controller's address on your network"
-        return f"Could not reach the controller at {at}: connection refused. {hint}."
+        return f"Connection refused at {at}. Use the port of your UniFi OS Server's local web UI (usually 11443)." + (" In Docker, localhost is Beacon's own container." if host in ("localhost", "127.0.0.1", "::1") else "")
     if "WRONG_VERSION_NUMBER" in str(why):
-        return f"The controller at {at} answered in plain HTTP, but the address starts with https. Try http://{at}."
+        return f"{at} answered in plain HTTP. Try http://{at}."
     if isinstance(why, (TimeoutError, socket.timeout)):
-        return f"The controller at {at} did not answer in time. Check the address, and that Beacon can reach it from its container."
-    return f"Could not reach the controller at {at}: {str(why)[:150]}"
+        return f"No answer from {at}. Check the address and that Beacon can reach it."
+    return f"Could not reach {at}: {str(why)[:150]}"
 
 
 def unifi_get(c, base, path, params=None):
@@ -438,25 +430,8 @@ def api_sample(x, st):
             "rx": num(up.get("rxRateBps") and up["rxRateBps"] * RATE_MUL, 0), "tx": num(up.get("txRateBps") and up["txRateBps"] * RATE_MUL, 0), "model": x.get("model"), "version": x.get("firmwareVersion")}
 
 
-def extras(d, x, s, errs):  # PoE draw and the band split are not in the API: when switched on, ask the device over SSH, and only the kinds that can have them
-    f = set(x.get("features", []))
-    poe, bands = s["poe_ssh"] and bool(f & {"switching", "gateway"}), s["bands_ssh"] and "accessPoint" in f
-    if not (poe or bands):
-        return {}
-    try:
-        e = mca(ssh_run(d, "mca-dump 2>/dev/null"))
-        if not e:
-            raise ValueError("mca-dump gave no usable reply.")
-        return {k: v for k, v in e.items() if (k == "poe" and poe) or (k == "bands" and bands)}
-    except paramiko.BadHostKeyException:
-        errs[d["name"]] = HOSTKEY_MSG
-    except Exception as e:
-        errs[d["name"]] = str(e)[:200]
-    return {}
-
-
 def poll_unifi(devs, ex):  # saves a sample for every device a site knows about and returns the rest, which are polled over SSH
-    s, got, names, rest = conf(), {}, {}, devs
+    got, names, rest = {}, {}, devs
     for c in unifi_sites():  # the first site that knows a device wins
         try:
             part = unifi_read(c, rest, ex)
@@ -477,18 +452,14 @@ def poll_unifi(devs, ex):  # saves a sample for every device a site knows about 
     for k in [k for k in UF["state"] if k not in {c["id"] for c in unifi_sites()}]:  # a removed site is forgotten
         UF["state"].pop(k, None)
         UF["conn"].pop(k, None)
-    by, errs = {d["name"]: d for d in devs}, {}
 
     def one(name):
         x, st, n = got[name]
         r = api_sample(x, st)
-        if "error" not in r:
-            if n is not None:
-                r["clients"] = n
-            r.update(extras(by[name], x, s, errs))
+        if n is not None and "error" not in r:
+            r["clients"] = n
         save_sample(name, r)
     list(ex.map(one, got))
-    UF["xerr"] = errs
     return rest
 
 
@@ -506,19 +477,19 @@ def ignore(host, on):  # hosts removed from the list by hand are skipped by the 
             write_private(UNIF, j)
 
 
-def discover():  # adds devices the sites know about that aren't in the list yet -> (names added, {site name: error})
+def discover():  # adds devices the sites know about that aren't in the list yet -> ([{name, host, site} added], {site name: error})
     found, errs = [], {}
     for c in unifi_sites():
         try:
             base, site, ver, kind = unifi_connect(c)
-            found += unifi_all(c, base, f"/v1/sites/{site}/devices")
+            found += [(c["name"], x) for x in unifi_all(c, base, f"/v1/sites/{site}/devices")]
         except (UnifiError, KeyError, TypeError, AttributeError) as e:
             errs[c["name"]] = str(e) if isinstance(e, UnifiError) else "Unexpected reply from the controller."
     added = []
     with jlock:
         lst, skip = items("devices"), set(unifi_saved()["ignored"])
         known, names = {addr(d["host"]) for d in lst}, {d["name"] for d in lst}
-        for x in found:
+        for site, x in found:
             ip = x.get("ipAddress")
             if not ip or ip in known or ip in skip or not HOST.match(ip):
                 continue
@@ -528,7 +499,7 @@ def discover():  # adds devices the sites know about that aren't in the list yet
             lst.append({"name": name, "host": ip})
             known.add(ip)
             names.add(name)
-            added.append(name)
+            added.append({"name": name, "host": ip, "site": site})
         if added:
             save_items("devices", lst)
             wake.set()
@@ -542,7 +513,7 @@ def run_discovery():  # one device check, remembered in the settings file; None 
         added, errs = discover()
         with jlock:
             j = unifi_raw()
-            j["discover"] = {**(j["discover"] if isinstance(j.get("discover"), dict) else {}), "last_run": time.time(), "last_added": added, "last_errors": errs}
+            j["discover"] = {**(j["discover"] if isinstance(j.get("discover"), dict) else {}), "last_run": time.time(), "last_added": [a["name"] for a in added], "last_errors": errs}
             write_private(UNIF, j)
         return added, errs
     finally:
@@ -596,7 +567,7 @@ def loop():
     while True:
         t0 = time.time()
         try:
-            shared = ssh_login()  # config.json "ssh" block, then Settings, then SSH_* env vars; a device's own keys win
+            shared = {**cfg().get("ssh", {}), **env_ssh()}  # config.json "ssh" block, overridden by SSH_* env vars; a device's own keys win
             devs = [{**shared, **d} for d in devices()]
             with ThreadPoolExecutor(8) as ex:
                 if unifi_sites():
@@ -623,7 +594,7 @@ def minutes_arg():  # ?minutes= from the page, kept to something sensible
 
 @app.get("/api/data")
 def data():
-    mins, out = minutes_arg(), []
+    mins, out, names = minutes_arg(), [], {c["id"]: c["name"] for c in unifi_sites()}
     for d in devices():  # passwords never leave the server
         if mins > 1440:
             series = long_samples(d["name"], mins)
@@ -632,9 +603,8 @@ def data():
             series = [json.loads(r[0]) for r in rows]
             step = max(1, len(series) // 300)  # downsample, always keeping the newest sample
             series = series[::-1][::step][::-1]
-        out.append({"name": d["name"], "host": d["host"], "series": series})
-    api, st = bool(unifi_sites()), conf()  # in API mode, PoE draw and the band split only exist when their SSH extras are on
-    return jsonify(interval=interval(), server_interval=st["server_interval"], version=VERSION, retention_days=retention(), has_poe=not api or st["poe_ssh"], has_bands=not api or st["bands_ssh"], devices=out)
+        out.append({"name": d["name"], "host": d["host"], "site": names.get(API_NAMES.get(d["name"])), "series": series})  # site: the one that answered for it last, none when it is polled over SSH
+    return jsonify(interval=interval(), server_interval=conf()["server_interval"], version=VERSION, retention_days=retention(), sites=list(names.values()) if len(names) > 1 else [], devices=out)
 
 
 @app.post("/api/settings")
@@ -653,9 +623,6 @@ def set_settings():
             s["max_attempts"] = max(1, min(20, int(j["max_attempts"])))
     except (TypeError, ValueError):
         return bad("Enter a whole number.")
-    for k in ("poe_ssh", "bands_ssh"):  # the optional SSH extras
-        if k in j:
-            s[k] = j[k] is True
     if "guest" in j:
         s["guest"] = bool(j["guest"])
     if "icon_source" in j:  # which icon collection names are looked up in; a change clears the cache so icons are found again
@@ -774,7 +741,7 @@ def who():
     return None
 
 
-ADMIN_GET = ("/api/users", "/api/storage", "/api/hostkeys", "/api/security", "/api/monitoring", "/api/unifi")  # reading these needs an admin
+ADMIN_GET = ("/api/users", "/api/storage", "/api/hostkeys", "/api/security", "/api/unifi")  # reading these needs an admin
 PASSIVE = {"/api/data", "/api/servers"}  # background polling: does not count as someone using the page
 OPEN = {("GET", "/vendor/chart.umd.min.js"), ("GET", "/"), ("GET", "/healthz"), ("GET", "/api/me"), ("GET", "/api/brand"), ("POST", "/api/login"), ("POST", "/api/setup")}
 
@@ -802,13 +769,6 @@ def headers(r):
     r.headers.setdefault("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src * data:; frame-ancestors 'none'")
     r.headers.setdefault("Cache-Control", "no-store" if request.path.startswith("/api/") else "no-cache")
     return r
-
-
-@app.get("/api/monitoring")
-def monitoring():  # admin: how the controller link is doing and the SSH extras (the password is never sent)
-    s, l = conf(), ssh_login()
-    return jsonify(configured=bool(unifi_sites()), poe_ssh=s["poe_ssh"], bands_ssh=s["bands_ssh"], errors=UF["xerr"],
-                   ssh={"user": l.get("user", ""), "port": l.get("port", 22), "password": bool(l.get("password")), "key_file": bool(l.get("key_file")), "env": sorted(env_ssh())})
 
 
 def write_private(path, obj):  # like write_json, but never readable by other users on the host
@@ -921,32 +881,6 @@ def unifi_forget():  # devices removed by hand can be found again
     j = unifi_raw()
     j["ignored"] = []
     write_private(UNIF, j)
-    return jsonify(ok=True)
-
-
-@app.post("/api/ssh-login")
-@locked
-def set_ssh_login():  # the login used for the SSH extras (and for any device not covered by the API); a blank password keeps the saved one
-    j, cur = request.get_json(silent=True) or {}, read_json(SSHF, {})
-    cur = cur if isinstance(cur, dict) else {}
-    if j.get("clear"):
-        for f in (SSHF, SSHF + ".bak"):
-            if os.path.exists(f):
-                os.remove(f)
-        wake.set()
-        return jsonify(ok=True)
-    user = str(j.get("user", cur.get("user", ""))).strip()
-    if not re.fullmatch(r"[A-Za-z0-9_.@-]{1,64}", user):
-        return bad("Enter the SSH user name (letters, numbers and . _ @ - only).")
-    try:
-        port = int(j.get("port") or cur.get("port") or 22)
-    except (TypeError, ValueError):
-        return bad("Enter a port number.")
-    pw = j["password"] if isinstance(j.get("password"), str) and j["password"] else cur.get("password")
-    if not 1 <= port <= 65535 or (pw and len(pw) > 256):
-        return bad("The port must be 1 to 65535 and the password at most 256 characters.")
-    write_private(SSHF, {"user": user, "port": port, **({"password": pw} if pw else {})})
-    wake.set()
     return jsonify(ok=True)
 
 

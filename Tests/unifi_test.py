@@ -1,4 +1,4 @@
-"""Server tests for the UniFi API source, the SSH extras, the saved sites and the device check. Run: python3 Tests/unifi_test.py  (needs Flask; no devices or network).
+"""Server tests for the UniFi API source, the saved sites and the device check. Run: python3 Tests/unifi_test.py  (needs Flask; no devices or network).
 Starts two small fake controllers on localhost and runs Beacon's own code against them, with the paramiko stand-in."""
 import contextlib, importlib.util, io, json, os, stat, sys, tempfile, threading, time
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -44,16 +44,12 @@ seen, mode = S1.cfg["seen"], S1.cfg
 
 from concurrent.futures import ThreadPoolExecutor
 a = m.app.test_client(); a.post("/api/login", json={"name": "boss", "password": "secret123"})
-m.ssh_run = lambda d, cmd=m.CMD: ""  # adding devices wakes Beacon's own polling thread; let it finish its SSH-only round, then park it so only this test polls
+m.ssh_run = lambda d: ""  # adding devices wakes Beacon's own polling thread; let it finish its SSH-only round, then park it so only this test polls
 for n, h in (("Office AP", "10.0.0.2"), ("Switch", "10.0.0.3"), ("Garage AP", "10.0.0.4"), ("NAS", "10.0.0.9")): a.post("/api/devices", json={"name": n, "host": h})
 time.sleep(1.5); m.wake = threading.Event(); m.interval = lambda: 3600; m.TABLES = {k: (v[0], m.wake) for k, v in m.TABLES.items()}
 os.environ.update(UNIFI_URL=url(S1), UNIFI_API_KEY="good-key")
-ssh_calls = []
-MCA = json.dumps({"model": "USW", "version": "7.0", "port_table": [{"poe_power": "10.5"}, {"poe_power": "4.5"}], "vap_table": [{"radio": "ng", "num_sta": 1}, {"radio": "na", "num_sta": 2}]})
-def fake_ssh(d, cmd=m.CMD): ssh_calls.append((d["name"], cmd)); return MCA if "mca-dump" in cmd and "@@" not in cmd else ""
-m.ssh_run = fake_ssh
 def cycle():
-    ssh_calls.clear(); devs = [{**m.ssh_login(), **d} for d in m.devices()]
+    devs = [dict(d) for d in m.devices()]
     with ThreadPoolExecutor(4) as ex: rest = m.poll_unifi(devs, ex)
     return [d["name"] for d in rest]
 last = lambda n: json.loads(m.sql("SELECT data FROM samples WHERE dev=? ORDER BY ts DESC LIMIT 1", (n,))[0][0])
@@ -66,47 +62,13 @@ chk("AP numbers come from the API", (ap["cpu"], ap["mem"], ap["load"], ap["uptim
 chk("throughput is the uplink rate", (ap["rx"], ap["tx"]), (8000, 4000))
 chk("wireless clients are counted per AP, from one list", (ap["clients"], "clients" in sw), (3, False))
 chk("an offline device shows the controller's word for it", last("Garage AP")["error"], "The controller reports this device as offline.")
-chk("no SSH at all with the extras off", ssh_calls, [])
-chk("PoE and bands are not invented", ("poe" in sw, "bands" in ap), (False, False))
+chk("PoE and band data are not part of API samples", ("poe" in sw, "bands" in ap), (False, False))
 chk("the controller's base path was found by probing", m.UF["conn"]["env"][1].endswith("/proxy/network/integration"), True)
 chk("status says how many devices matched, and what kind of controller", (st()["ok"], st()["devices"], st()["matched"], st()["version"], st()["kind"]), (True, 3, 3, "10.0.1", "UniFi OS console"))
 chk("the wireless filter was used", any("filter=type.eq" in p and "WIRELESS" in p for p in seen), True)
 d = a.get("/api/data").get_json()
-chk("the page is told PoE and bands are not collected", (d["has_poe"], d["has_bands"]), (False, False))
-
-print("== the SSH extras ==")
-mon = lambda: a.get("/api/monitoring").get_json()
-chk("they are off by default", (mon()["poe_ssh"], mon()["bands_ssh"], mon()["configured"]), (False, False, True))
-a.post("/api/users", json={"name": "v", "password": "password1", "role": "viewer"}); v = m.app.test_client(); v.post("/api/login", json={"name": "v", "password": "password1"})
-chk("a viewer cannot switch them on or read them", (v.post("/api/settings", json={"poe_ssh": True}).status_code, v.get("/api/monitoring").status_code), (403, 403))
-a.post("/api/settings", json={"poe_ssh": True}); cycle()
-chk("PoE on: only the switch is asked, with mca-dump alone", ssh_calls, [("Switch", "mca-dump 2>/dev/null")])
-chk("and its PoE draw is stored", last("Switch").get("poe"), 15.0)
-chk("the AP's bands stay out", "bands" in last("Office AP"), False)
-a.post("/api/settings", json={"poe_ssh": False, "bands_ssh": True}); cycle()
-chk("bands on: only the AP is asked", [c[0] for c in ssh_calls], ["Office AP"])
-chk("and its bands are stored, without the PoE", (last("Office AP").get("bands"), "poe" in last("Office AP")), ({"2.4": 1, "5": 2}, False))
-chk("the page is told bands are collected", (a.get("/api/data").get_json()["has_bands"], a.get("/api/data").get_json()["has_poe"]), (True, False))
-def fail(d, cmd=m.CMD): raise OSError("Authentication failed.")
-m.ssh_run = fail; cycle()
-chk("a failing SSH extra keeps the API numbers", (last("Office AP")["cpu"], "bands" in last("Office AP")), (4.8, False))
-chk("and the problem is reported by device", mon()["errors"], {"Office AP": "Authentication failed."})
-m.ssh_run = fake_ssh; a.post("/api/settings", json={"bands_ssh": False, "poe_ssh": False})
-
-print("== the SSH login saved in Settings ==")
-chk("none is set at first", mon()["ssh"]["user"], "")
-chk("a bad user name is refused", a.post("/api/ssh-login", json={"user": "a b; rm"}).status_code, 400)
-chk("a login can be saved", a.post("/api/ssh-login", json={"user": "ubnt", "password": "hunter2", "port": 2222}).status_code, 200)
-chk("it is reported without the password", (mon()["ssh"], "hunter2" in json.dumps(mon())), ({"user": "ubnt", "port": 2222, "password": True, "key_file": False, "env": []}, False))
-chk("the file is private", (stat.S_IMODE(os.stat(m.SSHF).st_mode), stat.S_IMODE(os.stat(m.SSHF + ".bak").st_mode)), (0o600, 0o600))
-a.post("/api/ssh-login", json={"user": "ubnt", "password": "", "port": 22})
-chk("a blank password keeps the saved one", (m.ssh_login().get("password"), m.ssh_login().get("port")), ("hunter2", 22))
-os.environ["SSH_USER"] = "fromenv"
-chk("environment variables win", m.ssh_login()["user"], "fromenv")
-chk("and the page is told which ones", mon()["ssh"]["env"], ["user"])
-del os.environ["SSH_USER"]
-a.post("/api/ssh-login", json={"clear": True})
-chk("it can be removed", (os.path.exists(m.SSHF), m.ssh_login().get("user")), (False, None))
+chk("with one site, the page is told of none (so shows no site column)", (d["sites"], "has_poe" in d), ([], False))
+chk("every device says which site answered for it, none for SSH ones", {x["name"]: x["site"] for x in d["devices"]}, {"Office AP": "Environment", "Switch": "Environment", "Garage AP": "Environment", "NAS": None})
 
 print("== when the controller can't be used ==")
 mode["key"] = "other"; cycle()
@@ -125,15 +87,16 @@ z = _s.socket(); z.bind(("127.0.0.1", 0)); closed = z.getsockname()[1]; z.close(
 def tried(u):
     try: m.unifi_get({"key": "k", "verify": False}, u, "/v1/info")
     except m.UnifiError as e: return str(e)
-chk("a closed port says where it looked and what to check", tried(f"http://127.0.0.1:{closed}/x"), f"Could not reach the controller at 127.0.0.1:{closed}: connection refused. Nothing is listening on port {closed} there. Check the port in the address (a self-hosted Network application is usually on 8443); inside Docker, localhost is Beacon's own container, so use the controller's address on your network.")
-chk("another host gets the port hint without the Docker one", "Docker" in tried(f"http://127.0.0.2:{closed}/x"), False)
-chk("https against a plain-http controller suggests http", tried(f"https://127.0.0.1:{S1.server_port}/x"), f"The controller at 127.0.0.1:{S1.server_port} answered in plain HTTP, but the address starts with https. Try http://127.0.0.1:{S1.server_port}.")
+chk("a refused connection says where, and to use the UniFi OS Server web UI port", tried(f"http://127.0.0.2:{closed}/x"), f"Connection refused at 127.0.0.2:{closed}. Use the port of your UniFi OS Server's local web UI (usually 11443).")
+chk("on localhost it adds the Docker hint", tried(f"http://127.0.0.1:{closed}/x").endswith(" In Docker, localhost is Beacon's own container."), True)
+chk("https against a plain-http controller suggests http", tried(f"https://127.0.0.1:{S1.server_port}/x"), f"127.0.0.1:{S1.server_port} answered in plain HTTP. Try http://127.0.0.1:{S1.server_port}.")
 r = a.post("/api/unifi/test", json={"url": f"127.0.0.1:{closed}", "key": "k"}).get_json()
 chk("the Test button shows it, with the default https port when none is given", (r["ok"], "127.0.0.1:" + str(closed) in r["error"]), (False, True))
 
 print("== sites set up in Settings ==")
+a.post("/api/users", json={"name": "v", "password": "password1", "role": "viewer"}); v = m.app.test_client(); v.post("/api/login", json={"name": "v", "password": "password1"})
 os.environ.pop("UNIFI_API_KEY"); os.environ.pop("UNIFI_URL")
-chk("without the env vars and with no saved site, Beacon is back to SSH for everything", (m.unifi_sites(), a.get("/api/data").get_json()["has_poe"], a.get("/api/unifi").get_json()["sites"]), ([], True, []))
+chk("without the env vars and with no saved site, Beacon is back to SSH for everything", (m.unifi_sites(), a.get("/api/data").get_json()["sites"], a.get("/api/unifi").get_json()["sites"]), ([], [], []))
 put = lambda sites, **kw: a.put("/api/unifi", json={"sites": sites, **kw})
 one = {"name": "Home", "url": url(S1), "key": "good-key", "site": "default", "verify": False}
 two = {"name": "Cabin", "url": url(S2), "key": "key-two", "site": "Default", "verify": False}
@@ -168,15 +131,18 @@ chk("a removed site is forgotten", (list(m.UF["state"]), [x["name"] for x in a.g
 print("== finding new devices ==")
 S1.cfg["devs"] += [dev("n1", "Lounge AP", "10.0.0.7", ["accessPoint"]), dev("n2", "Switch", "10.0.0.8", ["switching"]), dev("n3", "No address", "", []), dev("n4", "Bad", "not an ip!", [])]
 a.put("/api/unifi", json={"sites": [{**one, "id": ids[0], "key": ""}, two]})
-chk("a check across both sites finds what is new, names clashes by address, skips the unusable", (lambda r: (sorted(r.get_json()["added"]), r.get_json()["errors"]))(a.post("/api/unifi/discover")), (["Lounge AP", "Shed AP", "Switch (10.0.0.8)"], {}))
+chk("a check across both sites finds what is new, names clashes by address, skips the unusable", (lambda r: (sorted(x["name"] for x in r.get_json()["added"]), r.get_json()["errors"]))(a.post("/api/unifi/discover")), (["Lounge AP", "Shed AP", "Switch (10.0.0.8)"], {}))
 chk("they are in the device list", {d["name"]: d["host"] for d in m.devices()}["Lounge AP"], "10.0.0.7")
+chk("the dialog is told the address and site of each", {x["name"]: (x["host"], x["site"]) for x in (lambda: (a.delete("/api/devices/Shed AP"), a.post("/api/unifi/forget"), a.post("/api/unifi/discover").get_json()["added"])[2])()}, {"Shed AP": ("10.0.1.2", "Cabin")})
 chk("a second check finds nothing new", a.post("/api/unifi/discover").get_json()["added"], [])
+cycle(); dd2 = a.get("/api/data").get_json()
+chk("with two sites the page gets their names and each device's site", (dd2["sites"], {x["name"]: x["site"] for x in dd2["devices"]}["Office AP"], {x["name"]: x["site"] for x in dd2["devices"]}["Shed AP"], {x["name"]: x["site"] for x in dd2["devices"]}["NAS"]), (["Home", "Cabin"], "Home", "Cabin", None))
 a.delete("/api/devices/Lounge AP")
 chk("a device removed by hand is not brought back", (a.post("/api/unifi/discover").get_json()["added"], a.get("/api/unifi").get_json()["ignored"]), ([], 1))
 a.post("/api/devices", json={"name": "Lounge AP", "host": "10.0.0.7"})
 chk("adding it again lifts that", a.get("/api/unifi").get_json()["ignored"], 0)
 a.delete("/api/devices/Lounge AP"); a.post("/api/unifi/forget")
-chk("forgetting the removed devices brings them back on the next check", (a.get("/api/unifi").get_json()["ignored"], a.post("/api/unifi/discover").get_json()["added"]), (0, ["Lounge AP"]))
+chk("forgetting the removed devices brings them back on the next check", (a.get("/api/unifi").get_json()["ignored"], [x["name"] for x in a.post("/api/unifi/discover").get_json()["added"]]), (0, ["Lounge AP"]))
 S1.cfg["devs"].append(dev("n5", "Late AP", "10.0.0.9", ["accessPoint"]))
 chk("an address already in the list under another name is left alone", a.post("/api/unifi/discover").get_json()["added"], [])
 S2.cfg["key"] = "nope"
@@ -209,7 +175,7 @@ chk("when due, it adds the new devices", [d["name"] for d in m.devices() if d["n
 chk("and the next time is six hours on", abs(a.get("/api/unifi").get_json()["discover"]["next"] - (a.get("/api/unifi").get_json()["discover"]["last_run"] + 6 * 3600)) < 1, True)
 put([one], discover={"enabled": False}); S1.cfg["devs"].append(dev("n7", "Off AP", "10.0.0.11", ["accessPoint"])); m.dtick(time.time() + 99 * 3600)
 chk("switched off, nothing is added on a schedule", [d["name"] for d in m.devices() if d["name"] == "Off AP"], [])
-chk("but a manual check still works", a.post("/api/unifi/discover").get_json()["added"], ["Off AP"])
+chk("but a manual check still works", [x["name"] for x in a.post("/api/unifi/discover").get_json()["added"]], ["Off AP"])
 
 print("== the old way still works alongside ==")
 os.environ.update(UNIFI_URL=url(S2), UNIFI_API_KEY="key-two")
