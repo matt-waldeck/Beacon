@@ -20,3 +20,8 @@ services:
       SSH_PASSWORD: ${SSH_PASSWORD:-}
       SSH_KEY_FILE: ${SSH_KEY_FILE:-}
       SSH_PORT: ${SSH_PORT:-}
+      TZ: ${TZ:-}  # the time zone for the daily device check (1am by default), e.g. Europe/London
+      UNIFI_URL: ${UNIFI_URL:-}  # optional: one UniFi site from the environment (sites are normally added in Settings > UniFi)
+      UNIFI_API_KEY: ${UNIFI_API_KEY:-}
+      UNIFI_SITE: ${UNIFI_SITE:-}
+      UNIFI_VERIFY_TLS: ${UNIFI_VERIFY_TLS:-}

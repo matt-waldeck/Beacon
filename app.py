@@ -1,4 +1,4 @@
-import base64, functools, hashlib, json, os, queue, re, secrets, shutil, sqlite3, subprocess, threading, time, urllib.error, urllib.parse, urllib.request
+import base64, functools, hashlib, json, os, queue, re, secrets, shutil, socket, sqlite3, ssl, subprocess, threading, time, urllib.error, urllib.parse, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 import paramiko
@@ -9,7 +9,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 DATA = os.environ.get("DATA_DIR", "/data")
 VERSION = "1.0.0"
 DEFAULT_REPO = os.environ.get("GITHUB_REPO") or "matt-waldeck/beacon"  # where the Feedback page sends people
-CFG, SET, DB, DEV, SRV = (os.path.join(DATA, n) for n in ("config.json", "settings.json", "stats.db", "devices.json", "servers.json"))
+CFG, SET, DB, DEV, SRV, SSHF, UNIF = (os.path.join(DATA, n) for n in ("config.json", "settings.json", "stats.db", "devices.json", "servers.json", "ssh.json", "unifi.json"))
 # Read-only /proc reads work on every UniFi device; mca-dump adds model/firmware/client count where present.
 CMD = "for f in uptime loadavg meminfo stat net/dev; do echo @@$f; cat /proc/$f; done; echo @@mca; mca-dump 2>/dev/null"
 app, wake, swake, dblock, prev = Flask(__name__), threading.Event(), threading.Event(), threading.Lock(), {}
@@ -69,6 +69,11 @@ def env_ssh():
     return e
 
 
+def ssh_login():  # the shared SSH login: config.json "ssh" block, then the one saved in Settings, then SSH_* env vars; a device's own keys win
+    saved = read_json(SSHF, {})
+    return {**cfg().get("ssh", {}), **(saved if isinstance(saved, dict) else {}), **env_ssh()}
+
+
 PATHS = {"devices": DEV, "servers": SRV}
 
 
@@ -97,7 +102,7 @@ def whole(v, default, lo, hi):  # a hand-edited or damaged setting falls back to
 def conf():
     s = read_json(SET, {})
     s = s if isinstance(s, dict) else {}
-    return {"interval": whole(s.get("interval", cfg().get("interval", 30)), 30, 5, 3600), "server_interval": whole(s.get("server_interval", 15), 15, 5, 3600), "guest": bool(s.get("guest", False)), "idle_minutes": whole(s.get("idle_minutes", 10), 10, 0, 1440), "max_attempts": whole(s.get("max_attempts", 5), 5, 1, 20), "repo": str(s.get("repo", "")), "retention_days": s.get("retention_days"), "icon_source": s.get("icon_source") if s.get("icon_source") in ICON_SOURCES else DEFAULT_ICONS}
+    return {"interval": whole(s.get("interval", cfg().get("interval", 30)), 30, 5, 3600), "server_interval": whole(s.get("server_interval", 15), 15, 5, 3600), "guest": bool(s.get("guest", False)), "idle_minutes": whole(s.get("idle_minutes", 10), 10, 0, 1440), "max_attempts": whole(s.get("max_attempts", 5), 5, 1, 20), "repo": str(s.get("repo", "")), "retention_days": s.get("retention_days"), "poe_ssh": s.get("poe_ssh") is True, "bands_ssh": s.get("bands_ssh") is True, "icon_source": s.get("icon_source") if s.get("icon_source") in ICON_SOURCES else DEFAULT_ICONS}
 
 
 def interval():
@@ -192,9 +197,9 @@ class TrustFirst(paramiko.MissingHostKeyPolicy):
         client._host_keys.add(hostname, key.get_name(), key)  # lets this connection carry on
 
 
-def ssh_run(d):
+def ssh_run(d, cmd=CMD):
     if "user" not in d:
-        raise ValueError("No SSH user set: use SSH_USER or the ssh block in config.json.")
+        raise ValueError("No SSH user set: enter one in Settings > Monitoring, or use SSH_USER or the ssh block in config.json.")
     c = paramiko.SSHClient()
     with hklock:
         if os.path.exists(KNOWN_HOSTS):
@@ -203,9 +208,31 @@ def ssh_run(d):
     c.connect(d["host"], port=d.get("port", 22), username=d["user"], password=d.get("password"),
               key_filename=d.get("key_file"), timeout=8, look_for_keys=False, allow_agent=False)
     try:
-        return c.exec_command(CMD, timeout=20)[1].read().decode(errors="replace")
+        return c.exec_command(cmd, timeout=20)[1].read().decode(errors="replace")
     finally:
         c.close()
+
+
+def mca(raw):  # what mca-dump adds: model, firmware, AP client counts by band, PoE draw. Any odd shape just means fewer extras.
+    r = {}
+    try:
+        m = json.loads(raw)
+        r.update(model=m.get("model"), version=m.get("version"))
+        if "vap_table" in m:  # APs only
+            r["clients"] = sum(v.get("num_sta", 0) for v in m["vap_table"])
+            bands = {}
+            for v in m["vap_table"]:  # radio codes: ng = 2.4 GHz, na = 5 GHz, 6e = 6 GHz
+                b = {"ng": "2.4", "na": "5", "6e": "6"}.get(v.get("radio"))
+                if b:
+                    bands[b] = bands.get(b, 0) + v.get("num_sta", 0)
+            if bands:
+                r["bands"] = bands
+        ports = [p for p in m.get("port_table", []) if "poe_power" in p]
+        if ports:  # only PoE-capable devices report this; otherwise the field is left out
+            r["poe"] = round(sum(float(p["poe_power"] or 0) for p in ports), 1)
+    except (ValueError, AttributeError, TypeError):
+        pass
+    return r
 
 
 def parse(out, d):
@@ -229,24 +256,11 @@ def parse(out, d):
         r["rx"] = max(0, round(8 * (rx - p["rx"]) / dt))
         r["tx"] = max(0, round(8 * (tx - p["tx"]) / dt))
     prev[d["name"]] = {"ts": now, "idle": idle, "total": total, "rx": rx, "tx": tx}
-    try:
-        m = json.loads(s.get("mca", ""))  # extras only: any odd shape just means no extras
-        r.update(model=m.get("model"), version=m.get("version"))
-        if "vap_table" in m:  # APs only
-            r["clients"] = sum(v.get("num_sta", 0) for v in m["vap_table"])
-            bands = {}
-            for v in m["vap_table"]:  # radio codes: ng = 2.4 GHz, na = 5 GHz, 6e = 6 GHz
-                b = {"ng": "2.4", "na": "5", "6e": "6"}.get(v.get("radio"))
-                if b:
-                    bands[b] = bands.get(b, 0) + v.get("num_sta", 0)
-            if bands:
-                r["bands"] = bands
-        ports = [p for p in m.get("port_table", []) if "poe_power" in p]
-        if ports:  # only PoE-capable devices report this; otherwise the field is left out
-            r["poe"] = round(sum(float(p["poe_power"] or 0) for p in ports), 1)
-    except (ValueError, AttributeError, TypeError):
-        pass
+    r.update(mca(s.get("mca", "")))
     return r
+
+
+HOSTKEY_MSG = "The device's SSH host key has changed, so Beacon did not connect. If you reset or updated the device, use Settings > Security > Forget SSH host keys."
 
 
 def poll(d):
@@ -255,10 +269,325 @@ def poll(d):
     except (KeyError, IndexError):
         r = {"ts": time.time(), "error": "Unexpected reply from the device. Is it a UniFi (Linux) device?"}
     except paramiko.BadHostKeyException:  # nothing was sent: the password is only offered once the key is accepted
-        r = {"ts": time.time(), "error": "The device's SSH host key has changed, so Beacon did not connect. If you reset or updated the device, use Settings > About > Forget SSH host keys."}
+        r = {"ts": time.time(), "error": HOSTKEY_MSG}
     except Exception as e:
         r = {"ts": time.time(), "error": str(e)[:200]}
     save_sample(d["name"], r)
+
+
+# ---- UniFi Network API: the official Integration API with an API key, for as many controllers ("sites") as you like, set up in Settings > UniFi
+# (or one more from UNIFI_URL and UNIFI_API_KEY). With none set up everything is polled over SSH as before.
+RATE_MUL = 1  # the API's uplink rates are read as bits per second (a third-party client documents them so; UniFi's own spec doesn't say). Use 8 if they turn out to be bytes.
+API_NAMES = {}  # device name -> id of the site that answered for it last cycle
+UF = {"conn": {}, "state": {}, "xerr": {}}  # per site id: where its API lives and how the last check went; SSH-extras problems per device
+dlock = threading.Lock()  # one device check at a time
+
+
+class UnifiError(Exception):
+    pass
+
+
+def norm_url(u):
+    u = str(u).strip().rstrip("/")
+    if u and "://" not in u:
+        u = "https://" + u
+    p = urllib.parse.urlparse(u)
+    if p.scheme not in ("http", "https") or not p.netloc:
+        raise ValueError("Enter the controller's address, like https://192.168.1.1.")
+    return u
+
+
+def unifi_raw():
+    j = read_json(UNIF, {})
+    return j if isinstance(j, dict) else {}
+
+
+def unifi_saved():  # the saved sites and device-check schedule, tidied so a hand-edited file can't break anything
+    j = unifi_raw()
+    sites = [{"id": str(x["id"]), "name": str(x.get("name") or x["url"])[:40], "url": str(x["url"]), "key": str(x["key"]), "site": str(x.get("site") or "default"), "verify": x.get("verify") is True}
+             for x in (j.get("sites") if isinstance(j.get("sites"), list) else []) if isinstance(x, dict) and x.get("id") and x.get("url") and x.get("key")]
+    d = j.get("discover") if isinstance(j.get("discover"), dict) else {}
+    at, last = str(d.get("at", "")), d.get("last_run")
+    disc = {"enabled": d.get("enabled") is not False, "mode": "hours" if d.get("mode") == "hours" else "daily", "hours": whole(d.get("hours", 24), 24, 1, 168),
+            "at": at if re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", at) else "01:00", "last_run": last if isinstance(last, (int, float)) else None,
+            "last_added": [str(n) for n in d["last_added"]][:50] if isinstance(d.get("last_added"), list) else [], "last_errors": d["last_errors"] if isinstance(d.get("last_errors"), dict) else {}}
+    return {"sites": sites, "discover": disc, "ignored": [str(i) for i in j["ignored"]] if isinstance(j.get("ignored"), list) else []}
+
+
+def unifi_env():  # the first way of setting this up: UNIFI_URL and UNIFI_API_KEY in the environment count as one more site
+    url, key = os.environ.get("UNIFI_URL", "").strip(), os.environ.get("UNIFI_API_KEY", "").strip()
+    try:
+        url = norm_url(url) if url and key else ""
+    except ValueError:
+        url = ""
+    return {"id": "env", "name": "Environment", "url": url, "key": key, "site": os.environ.get("UNIFI_SITE", "").strip() or "default", "verify": flag("UNIFI_VERIFY_TLS"), "env": True} if url else None
+
+
+def unifi_sites():
+    env = unifi_env()
+    return [{**x, "env": False} for x in unifi_saved()["sites"]] + ([env] if env else [])
+
+
+def addr(host):
+    try:
+        return socket.gethostbyname(host)
+    except OSError:
+        return host
+
+
+def unreachable(url, e):  # says where Beacon looked and, for the usual mistakes, what to change
+    u = urllib.parse.urlparse(url)
+    host, port = u.hostname or "?", u.port or (443 if u.scheme == "https" else 80)
+    why, at = getattr(e, "reason", e), f"{host}:{port}"
+    if isinstance(why, ConnectionRefusedError):
+        hint = f"Nothing is listening on port {port} there. Check the port in the address (a self-hosted Network application is usually on 8443)"
+        if host in ("localhost", "127.0.0.1", "::1"):
+            hint += "; inside Docker, localhost is Beacon's own container, so use the controller's address on your network"
+        return f"Could not reach the controller at {at}: connection refused. {hint}."
+    if "WRONG_VERSION_NUMBER" in str(why):
+        return f"The controller at {at} answered in plain HTTP, but the address starts with https. Try http://{at}."
+    if isinstance(why, (TimeoutError, socket.timeout)):
+        return f"The controller at {at} did not answer in time. Check the address, and that Beacon can reach it from its container."
+    return f"Could not reach the controller at {at}: {str(why)[:150]}"
+
+
+def unifi_get(c, base, path, params=None):
+    ctx = ssl.create_default_context()
+    if not c["verify"]:  # most controllers use a self-signed certificate
+        ctx.check_hostname, ctx.verify_mode = False, ssl.CERT_NONE
+    req = urllib.request.Request(base + path + ("?" + urllib.parse.urlencode(params) if params else ""), headers={"X-API-KEY": c["key"], "Accept": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=10, context=ctx) as f:
+            return json.load(f)
+    except urllib.error.HTTPError as e:
+        raise UnifiError("The controller refused the API key." if e.code in (401, 403) else f"The controller answered HTTP {e.code} for {path}.")
+    except ValueError:
+        raise UnifiError("The controller's reply was not JSON. Check UNIFI_URL.")
+    except OSError as e:
+        raise UnifiError(unreachable(req.full_url, e))
+
+
+def unifi_all(c, base, path, params=None):  # every page of a list
+    out = []
+    while True:
+        page = unifi_get(c, base, path, {**(params or {}), "offset": len(out), "limit": 200})
+        out += page.get("data") or []
+        if not page.get("data") or len(out) >= page.get("totalCount", 0):
+            return out
+
+
+def unifi_connect(c, cache=True):  # finds the API's base path and the site, then remembers them until the address or site changes -> (base, site id, version, kind)
+    key, hit = (c["url"], c["site"]), UF["conn"].get(c["id"])
+    if cache and hit and hit[0] == key:
+        return hit[1:]
+    path = urllib.parse.urlparse(c["url"]).path
+    errs = []
+    for base in [c["url"]] if "integration" in path else [c["url"] + "/proxy/network/integration", c["url"] + "/integration"]:  # UniFi OS consoles and standalone installs differ
+        try:
+            ver = unifi_get(c, base, "/v1/info").get("applicationVersion", "")
+            break
+        except UnifiError as e:
+            errs.append(e)
+    else:
+        raise next((e for e in errs if "HTTP 404" not in str(e)), errs[-1])
+    sites, want = unifi_all(c, base, "/v1/sites"), c["site"].lower()
+    site = next((x for x in sites if want in (x["id"].lower(), str(x.get("internalReference", "")).lower(), str(x.get("name", "")).lower())), None)
+    if not site:
+        raise UnifiError(f"Site '{c['site']}' was not found. The controller has: " + ", ".join(str(x.get("internalReference") or x.get("name")) for x in sites) + ".")
+    kind = "UniFi OS console" if "/proxy/network" in base else "Network application"  # inferred from which path answered; the API doesn't say
+    if cache:
+        UF["conn"][c["id"]] = (key, base, site["id"], ver, kind)
+    return base, site["id"], ver, kind
+
+
+def unifi_read(c, devs, ex):  # {device name: (controller's device record, its latest statistics or an error text, wireless client count or None)}
+    base, site, ver, kind = unifi_connect(c)
+    ctl = {x["ipAddress"]: x for x in unifi_all(c, base, f"/v1/sites/{site}/devices") if x.get("ipAddress")}
+    mine = {}
+    for d in devs:  # the controller's devices are matched to your list by IP address
+        ip = addr(d["host"])
+        if ip in ctl:
+            mine[d["name"]] = ctl[ip]
+
+    def stats(name):
+        try:
+            return unifi_get(c, base, f"/v1/sites/{site}/devices/{mine[name]['id']}/statistics/latest")
+        except UnifiError as e:
+            return str(e)
+    got, counts, warn = dict(zip(mine, ex.map(stats, mine))), {}, ""
+    ap = lambda x: "accessPoint" in x.get("features", [])
+    if any(ap(x) for x in mine.values()):  # one list of wireless clients, counted per access point
+        try:
+            for cl in unifi_all(c, base, f"/v1/sites/{site}/clients", {"filter": "type.eq('WIRELESS')"}):
+                counts[cl.get("uplinkDeviceId")] = counts.get(cl.get("uplinkDeviceId"), 0) + 1
+        except UnifiError as e:
+            warn = "Client counts are missing: " + str(e)
+    now = time.time()
+    UF["state"][c["id"]] = {"ok": True, "version": ver, "kind": kind, "devices": len(ctl), "matched": len(mine), "warn": warn, "last_ok": now, "ts": now}
+    return {n: (x, got[n], counts.get(x["id"], 0) if ap(x) and not warn else None) for n, x in mine.items()}
+
+
+def api_sample(x, st):
+    now = time.time()
+    if x.get("state") != "ONLINE":
+        return {"ts": now, "error": "The controller reports this device as " + str(x.get("state", "unknown")).replace("_", " ").lower() + "."}
+    if isinstance(st, str):
+        return {"ts": now, "error": "UniFi API: " + st}
+    up, num = st.get("uplink") or {}, lambda v, n=1: None if v is None else round(v, n)
+    return {"ts": now, "uptime": st.get("uptimeSec"), "load": num(st.get("loadAverage1Min"), 2), "mem": num(st.get("memoryUtilizationPct")), "cpu": num(st.get("cpuUtilizationPct")),
+            "rx": num(up.get("rxRateBps") and up["rxRateBps"] * RATE_MUL, 0), "tx": num(up.get("txRateBps") and up["txRateBps"] * RATE_MUL, 0), "model": x.get("model"), "version": x.get("firmwareVersion")}
+
+
+def extras(d, x, s, errs):  # PoE draw and the band split are not in the API: when switched on, ask the device over SSH, and only the kinds that can have them
+    f = set(x.get("features", []))
+    poe, bands = s["poe_ssh"] and bool(f & {"switching", "gateway"}), s["bands_ssh"] and "accessPoint" in f
+    if not (poe or bands):
+        return {}
+    try:
+        e = mca(ssh_run(d, "mca-dump 2>/dev/null"))
+        if not e:
+            raise ValueError("mca-dump gave no usable reply.")
+        return {k: v for k, v in e.items() if (k == "poe" and poe) or (k == "bands" and bands)}
+    except paramiko.BadHostKeyException:
+        errs[d["name"]] = HOSTKEY_MSG
+    except Exception as e:
+        errs[d["name"]] = str(e)[:200]
+    return {}
+
+
+def poll_unifi(devs, ex):  # saves a sample for every device a site knows about and returns the rest, which are polled over SSH
+    s, got, names, rest = conf(), {}, {}, devs
+    for c in unifi_sites():  # the first site that knows a device wins
+        try:
+            part = unifi_read(c, rest, ex)
+        except (UnifiError, KeyError, TypeError, AttributeError) as e:
+            msg = str(e) if isinstance(e, UnifiError) else "Unexpected reply from the controller."
+            UF["state"][c["id"]] = {**UF["state"].get(c["id"], {}), "ok": False, "error": msg, "ts": time.time()}
+            for d in rest:  # during an outage the devices it answered for last time show the problem; the others carry on over SSH
+                if API_NAMES.get(d["name"]) == c["id"]:
+                    names[d["name"]] = c["id"]
+                    save_sample(d["name"], {"ts": time.time(), "error": f"UniFi API ({c['name']}): {msg}"})
+            rest = [d for d in rest if d["name"] not in names]
+            continue
+        got.update(part)
+        names.update({n: c["id"] for n in part})
+        rest = [d for d in rest if d["name"] not in part]
+    API_NAMES.clear()
+    API_NAMES.update(names)
+    for k in [k for k in UF["state"] if k not in {c["id"] for c in unifi_sites()}]:  # a removed site is forgotten
+        UF["state"].pop(k, None)
+        UF["conn"].pop(k, None)
+    by, errs = {d["name"]: d for d in devs}, {}
+
+    def one(name):
+        x, st, n = got[name]
+        r = api_sample(x, st)
+        if "error" not in r:
+            if n is not None:
+                r["clients"] = n
+            r.update(extras(by[name], x, s, errs))
+        save_sample(name, r)
+    list(ex.map(one, got))
+    UF["xerr"] = errs
+    return rest
+
+
+# ---- finding new devices: the sites' device lists are added to the device list by hand or on a schedule
+def ignore(host, on):  # hosts removed from the list by hand are skipped by the device check until they are added back
+    if not unifi_sites():
+        return
+    ip = addr(host)
+    with jlock:
+        j = unifi_raw()
+        ig = set(j.get("ignored") if isinstance(j.get("ignored"), list) else [])
+        if (ip in ig) != on:
+            ig.add(ip) if on else ig.discard(ip)
+            j["ignored"] = sorted(ig)
+            write_private(UNIF, j)
+
+
+def discover():  # adds devices the sites know about that aren't in the list yet -> (names added, {site name: error})
+    found, errs = [], {}
+    for c in unifi_sites():
+        try:
+            base, site, ver, kind = unifi_connect(c)
+            found += unifi_all(c, base, f"/v1/sites/{site}/devices")
+        except (UnifiError, KeyError, TypeError, AttributeError) as e:
+            errs[c["name"]] = str(e) if isinstance(e, UnifiError) else "Unexpected reply from the controller."
+    added = []
+    with jlock:
+        lst, skip = items("devices"), set(unifi_saved()["ignored"])
+        known, names = {addr(d["host"]) for d in lst}, {d["name"] for d in lst}
+        for x in found:
+            ip = x.get("ipAddress")
+            if not ip or ip in known or ip in skip or not HOST.match(ip):
+                continue
+            name = (str(x.get("name") or x.get("model") or ip).strip() or ip)[:60]
+            if name in names:  # a clash: tell them apart by address
+                name = f"{name[:50]} ({ip})"
+            lst.append({"name": name, "host": ip})
+            known.add(ip)
+            names.add(name)
+            added.append(name)
+        if added:
+            save_items("devices", lst)
+            wake.set()
+    return added, errs
+
+
+def run_discovery():  # one device check, remembered in the settings file; None when another is already running
+    if not dlock.acquire(False):
+        return None
+    try:
+        added, errs = discover()
+        with jlock:
+            j = unifi_raw()
+            j["discover"] = {**(j["discover"] if isinstance(j.get("discover"), dict) else {}), "last_run": time.time(), "last_added": added, "last_errors": errs}
+            write_private(UNIF, j)
+        return added, errs
+    finally:
+        dlock.release()
+
+
+def slot(at, now, days=0):  # the daily time HH:MM (server time) on today's date, moved by days
+    h, m = map(int, at.split(":"))
+    t = time.localtime(now)
+    return time.mktime((t.tm_year, t.tm_mon, t.tm_mday + days, h, m, 0, 0, 0, -1))
+
+
+def next_due(d, now):  # when the next automatic check is due (a time in the past means due now); None until the clock has started
+    last = d["last_run"]
+    if last is None:
+        return None
+    if d["mode"] == "hours":
+        return last + d["hours"] * 3600
+    today = slot(d["at"], now)
+    prev = today if today <= now else slot(d["at"], now, -1)  # the most recent scheduled time
+    if last < prev:
+        return prev  # missed (the container was down, say): due now
+    return slot(d["at"], now, 1) if today <= now else today
+
+
+def dtick(now):  # one look at the schedule
+    d = unifi_saved()["discover"]
+    if not (d["enabled"] and unifi_sites()):
+        return
+    if d["last_run"] is None:  # starts the clock: the first automatic check is the next scheduled time, not right away
+        with jlock:
+            j = unifi_raw()
+            j["discover"] = {**(j["discover"] if isinstance(j.get("discover"), dict) else {}), "last_run": now}
+            write_private(UNIF, j)
+    elif next_due(d, now) <= now:
+        run_discovery()
+
+
+def dloop():
+    while True:
+        time.sleep(30)
+        try:
+            dtick(time.time())
+        except Exception as e:
+            print("device check error:", e, flush=True)
 
 
 def loop():
@@ -267,11 +596,11 @@ def loop():
     while True:
         t0 = time.time()
         try:
-            c = cfg()
-            # Shared SSH login: config.json "ssh" block, overridden by SSH_* env vars; a device's own keys win.
-            shared = {**c.get("ssh", {}), **env_ssh()}
+            shared = ssh_login()  # config.json "ssh" block, then Settings, then SSH_* env vars; a device's own keys win
             devs = [{**shared, **d} for d in devices()]
             with ThreadPoolExecutor(8) as ex:
+                if unifi_sites():
+                    devs = poll_unifi(devs, ex)
                 list(ex.map(poll, devs))
             prune()
         except Exception as e:
@@ -304,7 +633,8 @@ def data():
             step = max(1, len(series) // 300)  # downsample, always keeping the newest sample
             series = series[::-1][::step][::-1]
         out.append({"name": d["name"], "host": d["host"], "series": series})
-    return jsonify(interval=interval(), server_interval=conf()["server_interval"], version=VERSION, retention_days=retention(), devices=out)
+    api, st = bool(unifi_sites()), conf()  # in API mode, PoE draw and the band split only exist when their SSH extras are on
+    return jsonify(interval=interval(), server_interval=st["server_interval"], version=VERSION, retention_days=retention(), has_poe=not api or st["poe_ssh"], has_bands=not api or st["bands_ssh"], devices=out)
 
 
 @app.post("/api/settings")
@@ -323,6 +653,9 @@ def set_settings():
             s["max_attempts"] = max(1, min(20, int(j["max_attempts"])))
     except (TypeError, ValueError):
         return bad("Enter a whole number.")
+    for k in ("poe_ssh", "bands_ssh"):  # the optional SSH extras
+        if k in j:
+            s[k] = j[k] is True
     if "guest" in j:
         s["guest"] = bool(j["guest"])
     if "icon_source" in j:  # which icon collection names are looked up in; a change clears the cache so icons are found again
@@ -441,7 +774,7 @@ def who():
     return None
 
 
-ADMIN_GET = ("/api/users", "/api/storage", "/api/hostkeys", "/api/security")  # reading these needs an admin
+ADMIN_GET = ("/api/users", "/api/storage", "/api/hostkeys", "/api/security", "/api/monitoring", "/api/unifi")  # reading these needs an admin
 PASSIVE = {"/api/data", "/api/servers"}  # background polling: does not count as someone using the page
 OPEN = {("GET", "/vendor/chart.umd.min.js"), ("GET", "/"), ("GET", "/healthz"), ("GET", "/api/me"), ("GET", "/api/brand"), ("POST", "/api/login"), ("POST", "/api/setup")}
 
@@ -469,6 +802,152 @@ def headers(r):
     r.headers.setdefault("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src * data:; frame-ancestors 'none'")
     r.headers.setdefault("Cache-Control", "no-store" if request.path.startswith("/api/") else "no-cache")
     return r
+
+
+@app.get("/api/monitoring")
+def monitoring():  # admin: how the controller link is doing and the SSH extras (the password is never sent)
+    s, l = conf(), ssh_login()
+    return jsonify(configured=bool(unifi_sites()), poe_ssh=s["poe_ssh"], bands_ssh=s["bands_ssh"], errors=UF["xerr"],
+                   ssh={"user": l.get("user", ""), "port": l.get("port", 22), "password": bool(l.get("password")), "key_file": bool(l.get("key_file")), "env": sorted(env_ssh())})
+
+
+def write_private(path, obj):  # like write_json, but never readable by other users on the host
+    tmp = path + ".tmp"
+    with os.fdopen(os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), "w") as f:
+        json.dump(obj, f)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, path)
+    shutil.copyfile(path, path + ".bak")
+    os.chmod(path + ".bak", 0o600)
+
+
+@app.get("/api/unifi")
+def unifi_info():  # admin: each site's status, and the device-check schedule (API keys are never sent)
+    u, now, out = unifi_saved(), time.time(), []
+    for c in unifi_sites():
+        st = UF["state"].get(c["id"], {})
+        out.append({"id": c["id"], "name": c["name"], "url": c["url"], "site": c["site"], "verify": c["verify"], "env": c["env"], "key": True,
+                    "status": "waiting" if "ok" not in st else "connected" if st["ok"] else "error", "error": "" if st.get("ok", True) else st.get("error", ""), "warn": st.get("warn", ""),
+                    **{k: st.get(k) for k in ("kind", "version", "devices", "matched", "last_ok")}})
+    d = u["discover"]
+    return jsonify(sites=out, discover={**d, "next": next_due(d, now) if d["enabled"] and out else None}, ignored=len(u["ignored"]), now=now, server_time=time.strftime("%H:%M %Z"))
+
+
+@app.put("/api/unifi")
+@locked
+def set_unifi():  # replaces the list of sites and the schedule; a blank API key keeps the saved one
+    j, cur, raw = request.get_json(silent=True) or {}, unifi_saved(), unifi_raw()
+    old, rows, out, ids, names = {x["id"]: x for x in cur["sites"]}, j.get("sites", []), [], set(), {"environment"} if unifi_env() else set()
+    if not isinstance(rows, list) or len(rows) > 20:
+        return bad("Add up to 20 sites.")
+    for r in rows:
+        r = r if isinstance(r, dict) else {}
+        name = str(r.get("name", "")).strip()[:40]
+        if not name or name.lower() in names:
+            return bad("Give every site its own name." if name else "Give every site a name.")
+        names.add(name.lower())
+        try:
+            url = norm_url(r.get("url", ""))
+        except ValueError as e:
+            return bad(f"{name}: {e}")
+        rid = str(r.get("id") or "")
+        key = str(r.get("key") or "").strip() or old.get(rid, {}).get("key", "")
+        if not re.fullmatch(r"\S{1,200}", key):
+            return bad(f"Enter the API key for {name}.")
+        rid = rid if rid in old and rid not in ids else secrets.token_hex(4)
+        ids.add(rid)
+        out.append({"id": rid, "name": name, "url": url, "key": key, "site": str(r.get("site") or "default").strip()[:80] or "default", "verify": r.get("verify") is True})
+    d, new = j.get("discover") if isinstance(j.get("discover"), dict) else {}, dict(cur["discover"])
+    if "enabled" in d:
+        new["enabled"] = d["enabled"] is True
+    if d.get("mode") in ("daily", "hours"):
+        new["mode"] = d["mode"]
+    if "hours" in d:
+        try:
+            new["hours"] = int(d["hours"])
+        except (TypeError, ValueError):
+            new["hours"] = 0
+        if not 1 <= new["hours"] <= 168:
+            return bad("Check every 1 to 168 hours.")
+    if "at" in d:
+        if not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", str(d["at"])):
+            return bad("Enter the time as HH:MM.")
+        new["at"] = d["at"]
+    if any(new[k] != cur["discover"][k] for k in ("enabled", "mode", "hours", "at")):
+        new["last_run"] = None  # a changed schedule starts its clock again
+    raw["sites"] = out
+    raw["discover"] = {**(raw["discover"] if isinstance(raw.get("discover"), dict) else {}), **{k: new[k] for k in ("enabled", "mode", "hours", "at", "last_run")}}
+    write_private(UNIF, raw)
+    for k in [k for k in UF["conn"] if k not in ids | {"env"}]:
+        UF["conn"].pop(k, None)
+        UF["state"].pop(k, None)
+    wake.set()
+    return jsonify(ok=True)
+
+
+@app.post("/api/unifi/test")
+def test_unifi():  # tries one site's settings without saving anything
+    j = request.get_json(silent=True) or {}
+    try:
+        url = norm_url(j.get("url", ""))
+    except ValueError as e:
+        return bad(str(e))
+    key = str(j.get("key") or "").strip() or next((x["key"] for x in unifi_saved()["sites"] if x["id"] == j.get("id")), "")
+    if not key:
+        return bad("Enter the API key.")
+    c = {"id": "test", "name": "test", "url": url, "key": key, "site": str(j.get("site") or "").strip() or "default", "verify": j.get("verify") is True}
+    try:
+        base, site, ver, kind = unifi_connect(c, cache=False)
+        n = len(unifi_all(c, base, f"/v1/sites/{site}/devices"))
+    except (UnifiError, KeyError, TypeError, AttributeError) as e:
+        return jsonify(ok=False, error=str(e) if isinstance(e, UnifiError) else "Unexpected reply from the controller.")
+    return jsonify(ok=True, version=ver, kind=kind, devices=n)
+
+
+@app.post("/api/unifi/discover")
+def unifi_discover():  # look for new devices once, now
+    if not unifi_sites():
+        return bad("Set up a site first.")
+    r = run_discovery()
+    if r is None:
+        return bad("A device check is already running.", 409)
+    return jsonify(added=r[0], errors=r[1])
+
+
+@app.post("/api/unifi/forget")
+@locked
+def unifi_forget():  # devices removed by hand can be found again
+    j = unifi_raw()
+    j["ignored"] = []
+    write_private(UNIF, j)
+    return jsonify(ok=True)
+
+
+@app.post("/api/ssh-login")
+@locked
+def set_ssh_login():  # the login used for the SSH extras (and for any device not covered by the API); a blank password keeps the saved one
+    j, cur = request.get_json(silent=True) or {}, read_json(SSHF, {})
+    cur = cur if isinstance(cur, dict) else {}
+    if j.get("clear"):
+        for f in (SSHF, SSHF + ".bak"):
+            if os.path.exists(f):
+                os.remove(f)
+        wake.set()
+        return jsonify(ok=True)
+    user = str(j.get("user", cur.get("user", ""))).strip()
+    if not re.fullmatch(r"[A-Za-z0-9_.@-]{1,64}", user):
+        return bad("Enter the SSH user name (letters, numbers and . _ @ - only).")
+    try:
+        port = int(j.get("port") or cur.get("port") or 22)
+    except (TypeError, ValueError):
+        return bad("Enter a port number.")
+    pw = j["password"] if isinstance(j.get("password"), str) and j["password"] else cur.get("password")
+    if not 1 <= port <= 65535 or (pw and len(pw) > 256):
+        return bad("The port must be 1 to 65535 and the password at most 256 characters.")
+    write_private(SSHF, {"user": user, "port": port, **({"password": pw} if pw else {})})
+    wake.set()
+    return jsonify(ok=True)
 
 
 @app.get("/healthz")
@@ -510,6 +989,8 @@ def add_item(kind):
     if any(d["name"] == name for d in lst):
         return bad("That name is already in use.")
     save_items(kind, lst + [{"name": name, "host": host, **extra(kind)}])
+    if kind == "devices":
+        ignore(host, False)
     TABLES[kind][1].set()  # check right away
     return jsonify(ok=True)
 
@@ -531,6 +1012,8 @@ def edit_item(kind, old):
         return bad("That name is already in use.")
     cur.update(name=name, host=host, **extra(kind))
     save_items(kind, lst)
+    if kind == "devices":
+        ignore(host, False)
     if name != old:
         sql(f"UPDATE {TABLES[kind][0]} SET dev=? WHERE dev=?", (name, old))  # history follows the rename
     prev.pop(old, None)
@@ -543,7 +1026,10 @@ def edit_item(kind, old):
 def delete_item(kind, name):
     if kind not in TABLES:
         return bad("Unknown list.", 404)
+    gone = next((d for d in items(kind) if d["name"] == name), None)
     save_items(kind, [d for d in items(kind) if d["name"] != name])
+    if kind == "devices" and gone:
+        ignore(gone["host"], True)
     sql(f"DELETE FROM {TABLES[kind][0]} WHERE dev=?", (name,))
     prev.pop(name, None)
     return jsonify(ok=True)
@@ -1084,3 +1570,4 @@ for _a in (read_json(os.path.join(DATA, "dash.json"), {}).get("apps", {}) if isi
     if isinstance(_a, dict) and not _a.get("icon"):
         queue_icon(_a.get("name", ""))
 threading.Thread(target=sloop, daemon=True).start()
+threading.Thread(target=dloop, daemon=True).start()
