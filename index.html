@@ -100,7 +100,7 @@ h1{display:flex;align-items:center;gap:.5rem}
 .av{display:grid;place-items:center;width:1.6rem;height:1.6rem;border-radius:50%;background:var(--blue);color:var(--on-blue);font-style:normal;font-size:.8rem;font-weight:600}
 dialog{padding:0;border:1px solid var(--rule);border-radius:var(--r);color:var(--ink);background:color-mix(in srgb,var(--field) 80%,transparent);backdrop-filter:blur(40px) saturate(180%);-webkit-backdrop-filter:blur(40px) saturate(180%);box-shadow:var(--sh);width:min(780px,94vw);height:min(620px,90vh);overflow:hidden}
 dialog[open]{display:grid;grid-template-columns:11.5rem 1fr}
-#kd{width:min(480px,94vw);height:auto;max-height:85vh;overflow:auto}#kd[open]{display:block}.kb{padding:1.2rem 1.4rem}.kr{display:flex;gap:.7rem;align-items:flex-start;padding:.5rem 0;border-bottom:1px solid var(--rule);cursor:pointer}.kr input{margin-top:.25rem}.kr small{display:block;opacity:.7;overflow-wrap:anywhere}#klist{max-height:40vh;overflow:auto}
+#kd,#xd,#ud{width:min(480px,94vw);height:auto;max-height:85vh;overflow:auto}#ud{width:min(660px,94vw)}#kd[open],#xd[open],#ud[open]{display:block}#xd,#ud{height:fit-content}#xd label,#ud label{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin:.55rem 0}#xd input:not([type=checkbox]){width:min(14rem,100%)}#ud input:not([type=checkbox]){width:min(18rem,100%)}#ud label.chk{justify-content:flex-start}.ds{border:1px solid var(--rule);border-radius:var(--r);padding:.8rem .9rem;margin:.7rem 0;display:grid;grid-template-columns:1fr 1fr;gap:.55rem .8rem}.ds .wide{grid-column:1/-1}#ud .ds label{display:grid;gap:.2rem;margin:0;font-size:.82rem;color:var(--mute);justify-content:stretch}#ud .ds label.chk{display:flex;align-items:center;align-self:end;color:var(--ink);font-size:.9rem;padding-bottom:.45rem}#ud .ds input:not([type=checkbox]){width:100%;color:var(--ink)}#ud .sf{position:sticky;bottom:-1.2rem;margin:.8rem -1.4rem -1.2rem;padding:.75rem 1.4rem;border-top:1px solid var(--rule);background:color-mix(in srgb,var(--field) 92%,transparent);backdrop-filter:blur(12px)}.dr{display:flex;gap:.6rem;align-items:center;justify-content:flex-end}.dr .f-res{flex:1;min-width:0;margin:0}.sbody section.uni{align-content:stretch;grid-template-rows:auto 1fr auto;min-height:100%}#u-foot{position:sticky;bottom:-1.25rem;margin:0 -1.5rem -1.25rem;padding:.75rem 1.5rem;display:flex;justify-content:space-between;align-items:center;gap:.6rem;border-top:1px solid var(--rule);background:color-mix(in srgb,var(--field) 88%,transparent);backdrop-filter:blur(12px)}.us{border:1px solid var(--rule);border-radius:var(--r);padding:.8rem 1rem;display:grid;gap:.55rem}.uh{display:flex;justify-content:space-between;align-items:center;gap:.8rem}.uh small{color:var(--mute)}.neon{--nc:#39ff88;display:inline-block;padding:.12rem .85rem;border-radius:999px;border:1px solid var(--nc);background:#0b0e14;color:var(--nc);font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;text-shadow:0 0 3px var(--nc),0 0 9px var(--nc),0 0 18px var(--nc);box-shadow:0 0 7px color-mix(in srgb,var(--nc) 60%,transparent),inset 0 0 7px color-mix(in srgb,var(--nc) 28%,transparent)}.neon.err{--nc:#ff4d6d}.neon.wait{--nc:#ffb02e}@keyframes flick{0%,18%,22%,62%,64%,100%{opacity:1}20%,63%{opacity:.5}}.neon.err,.neon.wait{animation:flick 3.2s infinite}@media(prefers-reduced-motion:reduce){.neon{animation:none!important}}.xr{display:flex;gap:.6rem;align-items:center;justify-content:space-between;margin-top:.8rem}.xr span{margin-left:auto}.kb{padding:1.2rem 1.4rem}.kr{display:flex;gap:.7rem;align-items:flex-start;padding:.5rem 0;border-bottom:1px solid var(--rule);cursor:pointer}.kr input{margin-top:.25rem}.kr small{display:block;opacity:.7;overflow-wrap:anywhere}#klist{max-height:40vh;overflow:auto}
 dialog::backdrop{background:rgba(0,0,0,.28);backdrop-filter:blur(4px)}
 #sn{display:flex;flex-direction:column;gap:2px;padding:1rem .75rem;border-right:1px solid var(--rule)}
 #sn button{text-align:left;border:0;background:none;color:var(--mute)}#sn button[aria-current=true]{background:color-mix(in srgb,var(--blue) 16%,transparent);color:var(--ink)}
@@ -241,7 +241,7 @@ textarea{font:inherit;padding:.5rem .65rem;border:1px solid var(--rule);border-r
 <span class="uw"><button id="who" class="chip" hidden aria-haspopup="menu" aria-expanded="false"><i class="av"></i><span id="wn"></span></button>
 <div id="um" class="menu sm" role="menu" hidden><p class="mute" style="margin:0">Signed in as <b id="umn"></b><br><span id="umr"></span></p><button id="umo" role="menuitem">Sign out</button></div></span></div></header>
 <dialog id="sd">
-<div id="sn"><button data-s="look">Appearance</button><button data-s="mon" data-r="3">Monitoring</button><button data-s="sec" data-r="3">Security</button><button data-s="brand" data-r="3">Branding</button><button data-s="users" data-r="3">Users</button><button data-s="account" data-r="acct">Account</button><button data-s="fb" data-r="ng">Feedback</button><button data-s="about">About</button></div>
+<div id="sn"><button data-s="look">Appearance</button><button data-s="mon" data-r="3">Monitoring</button><button data-s="unifi" data-r="3">UniFi</button><button data-s="sec" data-r="3">Security</button><button data-s="brand" data-r="3">Branding</button><button data-s="users" data-r="3">Users</button><button data-s="account" data-r="acct">Account</button><button data-s="fb" data-r="ng">Feedback</button><button data-s="about">About</button></div>
 <div class="sbody"><button id="sx" class="close" aria-label="Close">✕</button>
 <section data-s="look"><h3>Appearance</h3>
 <label>Style <select id="style"><option value="honeycrisp">Honeycrisp</option><option value="pastel">Pastel</option><option value="stark">Stark</option></select></label>
@@ -256,7 +256,19 @@ textarea{font:inherit;padding:.5rem .65rem;border:1px solid var(--rule);border-r
 <div class="row"><label>Server pings every <input id="siv" type="number" min="5" max="3600"> s</label><button id="ssave" class="pri">Save</button></div>
 <div class="row"><label>Keep history for <input id="ret" type="number" min="1" max="365"> days</label><button id="rsave" class="pri">Save</button></div>
 <p class="mute" style="margin:0">Takes roughly 1 MB per device per day. Shortening this deletes the older history at the next check.</p>
-<span id="mmsg" class="mute"></span></section>
+<span id="mmsg" class="mute"></span>
+<div id="uf" hidden><p style="margin:1rem 0 0"><b>Extra data over SSH</b> <span class="mute">(off by default)</span></p>
+<p class="mute" style="margin:0">The UniFi API doesn't report these two things, so Beacon can ask the devices directly over SSH instead.</p>
+<label class="chk"><input type="checkbox" id="x-poe"> PoE power draw</label>
+<p id="x-poe-w" class="mute" style="margin:0"></p>
+<label class="chk"><input type="checkbox" id="x-bands"> Client counts by band (2.4 / 5 / 6 GHz)</label>
+<p id="x-bands-w" class="mute" style="margin:0"></p>
+<div id="x-login" class="row" hidden style="justify-content:flex-start"><button id="x-open">SSH credentials…</button><span id="x-who" class="mute"></span></div>
+<span id="x-errs" class="bad"></span><span id="xmsg" class="mute"></span></div>
+<p id="uf-off" class="mute" hidden style="margin-top:1rem">Beacon checks every device over SSH. To read them from your UniFi Network application instead, add a site under Settings &gt; UniFi. The options for extra data over SSH appear here once you have.</p></section>
+<section data-s="unifi" class="uni" hidden><h3>UniFi</h3>
+<div><h4 style="margin:0 0 .6rem;font-size:.95rem">Sites</h4><div id="u-list" style="display:grid;gap:.7rem"></div><p id="u-disc" class="mute" style="margin:.8rem 0 0"></p><span id="umsg" class="mute"></span></div>
+<div id="u-foot"><button id="u-cfg">Configure…</button><button id="u-check" disabled>Check for new devices now</button></div></section>
 <section data-s="sec" hidden><h3>Security</h3>
 <div class="row"><label>Sign out after <input id="idle" type="number" min="0" max="1440"> minutes of inactivity</label><button id="isave" class="pri">Save</button></div>
 <span id="imsg" class="mute"></span>
@@ -305,6 +317,24 @@ textarea{font:inherit;padding:.5rem .65rem;border:1px solid var(--rule);border-r
 <div class="row" style="justify-content:flex-start;flex-wrap:wrap;margin-top:.7rem"><button id="st-icons">Clear icon cache</button><button id="st-compact">Compact database</button><button id="st-hist">Delete history…</button></div>
 <span id="st-msg" class="mute"></span></div></section>
 </div></dialog>
+<dialog id="ud"><div class="kb"><h3>Configure UniFi sites</h3>
+<p class="mute">Add each UniFi Network application Beacon should read devices from. Create an API key in that application under Settings &gt; Control Plane &gt; Integrations. Keys are kept on the server and never sent back to the browser.</p>
+<div id="ud-sites"></div><p id="ud-env" class="mute" hidden></p>
+<div class="dr" style="justify-content:flex-start"><button type="button" id="ud-add">Add a site</button></div>
+<h4 style="margin:1.2rem 0 .2rem;font-size:.95rem">Finding new devices</h4>
+<label class="chk"><input type="checkbox" id="ud-auto"> Automatically add devices the sites know about that aren't in your list yet</label>
+<label id="ud-when">Look for them <span><select id="ud-mode"><option value="daily">daily at</option><option value="hours">every</option></select> <input id="ud-at" type="time" value="01:00" style="width:auto"><input id="ud-hours" type="number" min="1" max="168" value="6" style="width:5rem"> <span id="ud-hl">hours</span></span></label>
+<p id="ud-tz" class="mute" style="margin:0"></p>
+<div class="dr" style="justify-content:flex-start;margin-top:.4rem"><button type="button" id="ud-forget" hidden title="Devices you removed from the list are skipped by the check. This lets it find them again."></button></div>
+<span id="ud-err" class="err"></span>
+<div class="dr sf"><button type="button" id="ud-x">Cancel</button><button type="button" id="ud-save" class="pri">Save</button></div></div></dialog>
+<dialog id="xd"><div class="kb"><h3>SSH credentials</h3>
+<p class="mute">Used for the extra SSH data, and for any device the UniFi API doesn't know about. Saved in the data folder, readable only by Beacon, and never sent back to the browser.</p>
+<label>User <input id="xd-user" maxlength="64" autocomplete="off"></label>
+<label>Password <input id="xd-pass" type="password" autocomplete="new-password"></label>
+<label>Port <input id="xd-port" type="number" min="1" max="65535" placeholder="22"></label>
+<p id="xd-env" class="mute" hidden></p><span id="xd-err" class="err"></span>
+<div class="xr"><button type="button" id="xd-clear">Remove</button><span><button type="button" id="xd-x">Cancel</button> <button type="button" id="xd-save" class="pri">Save</button></span></div></div></dialog>
 <dialog id="kd"><div class="kb"><h3>Forget SSH host keys</h3>
 <p class="mute">A forgotten device is trusted again the next time Beacon connects to it, so only do this for devices you reset or replaced, on a network you trust.</p>
 <label class="kr"><input type="checkbox" id="kall"><span><b>All devices</b></span></label>
@@ -466,7 +496,7 @@ const split = () => {
 };
 const STAT = {  // each returns [value or null, detail line]
   "n.online": () => [`${live().length} of ${DATA.devices.length}`], "n.clients": () => [sum(vals("clients")), split()],
-  "n.poe": () => [fm(W, sum(vals("poe")))], "n.net": m => { const r = sum(vals("rx")), s = sum(vals("tx")); return [fm(bps, m === "rx" ? r : m === "tx" ? s : r == null && s == null ? null : (r ?? 0) + (s ?? 0))]; },  // m: total (default), rx or tx
+  "n.poe": () => DATA.has_poe === false ? ["Off", "Turned off in Settings > Monitoring"] : [fm(W, sum(vals("poe")))], "n.net": m => { const r = sum(vals("rx")), s = sum(vals("tx")); return [fm(bps, m === "rx" ? r : m === "tx" ? s : r == null && s == null ? null : (r ?? 0) + (s ?? 0))]; },  // m: total (default), rx or tx
   "n.cpu": () => [fm(PC, avg(vals("cpu")))], "n.mem": () => [fm(PC, avg(vals("mem")))],
   "n.load": () => [fm(v => v.toFixed(2), mx(vals("load")))], "n.up": () => [fm(up, mx(vals("uptime")))],
   "s.online": () => [`${lat().filter(x => x.ms != null).length} of ${SERV.servers.length}`],
@@ -853,6 +883,7 @@ async function load() {
     DATA = await api("GET", `/api/data?minutes=${RANGE}`);
     if (!ME) return;
     fitRange();
+    $("#bands").closest("label").hidden = DATA.has_bands === false;  // in API mode the band split only exists when its SSH extra is on
     if (document.activeElement !== $("#ret")) $("#ret").value = DATA.retention_days;
     iv = DATA.interval; siv = DATA.server_interval; $("#ver").textContent = "Version " + DATA.version;
     if (document.activeElement !== $("#iv")) $("#iv").value = iv;
@@ -1043,10 +1074,13 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") $("#um").hid
 $("#so").onclick = signOut;
 
 // settings dialog
-const clearNotes = () => ["mmsg", "imsg", "amsg", "hkmsg", "kerr", "bmsg", "perr", "uerr", "fb-msg", "st-msg"].forEach(i => note("#" + i, ""));
+const clearNotes = () => ["mmsg", "xmsg", "umsg", "ud-err", "imsg", "amsg", "hkmsg", "kerr", "bmsg", "perr", "uerr", "fb-msg", "st-msg"].forEach(i => note("#" + i, ""));
 function showSec(s) {
   clearNotes();
   $("#sd").querySelectorAll("[data-s]").forEach(e => e.tagName === "SECTION" ? e.hidden = e.dataset.s !== s : e.setAttribute("aria-current", e.dataset.s === s));
+  uStop();
+  if (s === "unifi") { loadUnifi(); uTimer = setInterval(loadUnifi, 10000); }
+  if (s === "mon") loadMon();
   if (s === "users") loadUsers();
   if (s === "fb") fbInit();
   if (s === "about" && can(3)) loadStorage();
@@ -1062,7 +1096,141 @@ $("#sb").onclick = () => openSettings();
 $("#sn").onclick = e => { const b = e.target.closest("button"); if (b) showSec(b.dataset.s); };
 $("#sx").onclick = () => $("#sd").close();
 $("#sd").addEventListener("close", clearNotes);
+$("#sd").addEventListener("close", () => uStop());
 $("#sd").onclick = e => { if (e.target === $("#sd")) $("#sd").close(); };
+
+// UniFi sites: status of each connected controller, the configure popup, and the device check
+let UNI = {sites: [], discover: {}}, uTimer = null;
+const uStop = () => { clearInterval(uTimer); uTimer = null; };
+const nowS = () => Date.now() / 1000 + (UNI.skew || 0);  // the server's clock, so "x ago" is right whatever this device's clock says
+const dur = s => s < 90 ? `${Math.round(s)} s` : s < 5400 ? `${Math.round(s / 60)} min` : s < 129600 ? `${Math.round(s / 3600)} h` : `${Math.round(s / 86400)} days`;
+const agoT = ts => !ts ? "Never" : nowS() - ts < 5 ? "Just now" : dur(nowS() - ts) + " ago";
+const NEON = {connected: ["", "Connected"], error: ["err", "Offline"], waiting: ["wait", "Connecting"]};
+function renderUnifi() {
+  const sites = UNI.sites, d = UNI.discover;
+  $("#u-list").innerHTML = sites.length ? sites.map(s => `<div class="us"><div class="uh"><span><b>${esc(s.name)}</b> <small>${esc(s.site)}${s.env ? " · set by the environment" : ""}</small></span><span class="neon ${NEON[s.status][0]}">${NEON[s.status][1]}</span></div>
+<dl><dt>Controller</dt><dd>${esc(s.kind)}${s.version ? " · Network " + esc(s.version) : ""}</dd><dt>Last contact</dt><dd title="${s.last_ok ? esc(new Date(s.last_ok * 1000).toLocaleString()) : ""}">${agoT(s.last_ok)}</dd><dt>Devices</dt><dd>${esc(s.devices)}${s.matched != null ? ` (${s.matched} in your list)` : ""}</dd></dl>
+${s.error ? `<div class="bad">${esc(s.error)}</div>` : ""}${s.warn ? `<div class="mute">${esc(s.warn)}</div>` : ""}</div>`).join("")
+    : `<p class="mute" style="margin:0">No sites yet. Choose Configure… to connect a UniFi Network application.</p>`;
+  const probs = Object.entries(d.last_errors || {}).map(([n, m]) => `${n}: ${m}`).join(" ");
+  $("#u-disc").textContent = !sites.length ? "" : !d.enabled ? "Automatic checks for new devices are off."
+    : `Looks for new devices ${d.mode === "hours" ? `every ${d.hours} h` : `daily at ${d.at}`} (server time ${UNI.server_time}). ` + (d.last_run ? `Last check ${agoT(d.last_run).toLowerCase()}${(d.last_added || []).length ? `, added ${d.last_added.join(", ")}` : ", nothing new"}. ` : "")
+      + (d.next ? (d.next <= nowS() ? "Next check is due now." : `Next check in ${dur(d.next - nowS())}.`) : "") + (probs ? " Problems: " + probs : "");
+  $("#u-check").disabled = !sites.length;
+}
+async function loadUnifi() {
+  try { const r = await api("GET", "/api/unifi"); UNI = {...r, skew: r.now - Date.now() / 1000}; renderUnifi(); }
+  catch (x) { note("#umsg", x.message); }
+}
+$("#u-check").onclick = async e => {
+  const b = e.currentTarget; b.disabled = true; note("#umsg", "Checking…", 60000);
+  try {
+    const r = await api("POST", "/api/unifi/discover"), probs = Object.entries(r.errors).map(([n, m]) => `${n}: ${m}`).join(" ");
+    note("#umsg", (r.added.length ? `Added ${r.added.length} new device${r.added.length === 1 ? "" : "s"}: ${r.added.join(", ")}.` : "No new devices found.") + (probs ? " " + probs : ""), 15000);
+    if (r.added.length) refresh();
+    loadUnifi();
+  } catch (x) { note("#umsg", x.message); }
+  b.disabled = !UNI.sites.length;
+};
+const rowHTML = s => `<div class="ds" data-id="${esc(s.id || "")}">
+<label>Name <input class="f-name" maxlength="40" value="${esc(s.name || "")}"></label>
+<label>Site <input class="f-site" placeholder="default" value="${s.site && s.site !== "default" ? esc(s.site) : ""}"></label>
+<label class="wide">Address <input class="f-url" placeholder="https://192.168.1.10:8443" value="${esc(s.url || "")}"></label>
+<label>API key <input class="f-key" type="password" autocomplete="new-password" placeholder="${s.id ? "Saved. Leave blank to keep it" : "Paste the key"}"></label>
+<label class="chk"><input type="checkbox" class="f-tls"${s.verify ? " checked" : ""}> Check the certificate</label>
+<div class="dr wide"><span class="f-res mute"></span><button type="button" class="f-test">Test</button><button type="button" class="f-del">Remove</button></div></div>`;
+const rowData = r => ({id: r.dataset.id, name: r.querySelector(".f-name").value, url: r.querySelector(".f-url").value, key: r.querySelector(".f-key").value, site: r.querySelector(".f-site").value, verify: r.querySelector(".f-tls").checked});
+const udSync = () => {
+  const on = $("#ud-auto").checked, h = $("#ud-mode").value === "hours";
+  $("#ud-when").style.opacity = on ? 1 : .5;
+  ["#ud-mode", "#ud-at", "#ud-hours"].forEach(i => { $(i).disabled = !on; });
+  $("#ud-at").hidden = h; $("#ud-hours").hidden = !h; $("#ud-hl").hidden = !h;
+};
+$("#ud-auto").onchange = $("#ud-mode").onchange = udSync;
+$("#u-cfg").onclick = async () => {
+  await loadUnifi();
+  const env = UNI.sites.filter(s => s.env), d = UNI.discover;
+  $("#ud-sites").innerHTML = UNI.sites.filter(s => !s.env).map(rowHTML).join("");
+  $("#ud-env").hidden = !env.length; $("#ud-env").textContent = env.length ? `${env[0].url} comes from the UNIFI_URL environment variable, so it isn't edited here.` : "";
+  $("#ud-auto").checked = d.enabled; $("#ud-mode").value = d.mode; $("#ud-at").value = d.at; $("#ud-hours").value = d.hours;
+  $("#ud-tz").textContent = `Times are the server's. It is ${UNI.server_time} there now.`;
+  $("#ud-forget").hidden = !UNI.ignored; $("#ud-forget").textContent = `Forget ${UNI.ignored} device${UNI.ignored === 1 ? "" : "s"} removed by hand`;
+  udSync(); note("#ud-err", ""); $("#ud").showModal();
+};
+$("#ud-add").onclick = () => { $("#ud-sites").insertAdjacentHTML("beforeend", rowHTML({})); $("#ud-sites").lastElementChild.querySelector(".f-name").focus(); };
+$("#ud-sites").onclick = async e => {
+  const row = e.target.closest(".ds"), c = e.target.classList;
+  if (!row) return;
+  if (c.contains("f-del")) row.remove();
+  if (c.contains("f-test")) {
+    const res = row.querySelector(".f-res"); res.className = "f-res mute"; res.textContent = "Trying…";
+    try {
+      const r = await api("POST", "/api/unifi/test", rowData(row));
+      res.className = "f-res" + (r.ok ? "" : " bad"); res.textContent = r.ok ? `Connected: ${r.kind}, Network ${r.version}, ${r.devices} device${r.devices === 1 ? "" : "s"}.` : r.error;
+    } catch (x) { res.className = "f-res bad"; res.textContent = x.message; }
+  }
+};
+$("#ud-forget").onclick = async () => {
+  try { await api("POST", "/api/unifi/forget"); $("#ud-forget").hidden = true; UNI.ignored = 0; note("#umsg", "They can be found again at the next check."); }
+  catch (x) { note("#ud-err", x.message); }
+};
+$("#ud-x").onclick = () => $("#ud").close();
+$("#ud-save").onclick = async () => {
+  try {
+    await api("PUT", "/api/unifi", {sites: [...document.querySelectorAll("#ud-sites .ds")].map(rowData), discover: {enabled: $("#ud-auto").checked, mode: $("#ud-mode").value, hours: $("#ud-hours").value, at: $("#ud-at").value}});
+    $("#ud").close(); note("#umsg", "Saved."); loadUnifi(); loadMon(); refresh();
+  } catch (x) { note("#ud-err", x.message); }
+};
+
+// monitoring: the optional SSH extras
+let MON = {};
+const xOn = () => $("#x-poe").checked || $("#x-bands").checked;
+function xSync() {
+  $("#x-login").hidden = !xOn();
+  const u = (MON.ssh || {}).user;
+  $("#x-who").textContent = u ? `Signing in as ${u}.` : "No SSH login saved yet. Add one so these can work.";
+}
+async function loadMon() {
+  try {
+    MON = await api("GET", "/api/monitoring");
+    $("#uf").hidden = !MON.configured; $("#uf-off").hidden = !!MON.configured;
+    $("#x-poe").checked = MON.poe_ssh; $("#x-bands").checked = MON.bands_ssh;
+    const every = `every ${iv} s`;
+    $("#x-poe-w").textContent = `Impact: opens an SSH session to each switch and gateway ${every}. With many devices that adds CPU load on Beacon and on those devices, and more network traffic.`;
+    $("#x-bands-w").textContent = `Impact: opens an SSH session to each access point ${every}, with the same extra load and traffic.`;
+    $("#x-errs").textContent = Object.entries(MON.errors || {}).map(([n, m]) => `${n}: ${m}`).join(" ");
+    xSync();
+  } catch (x) { note("#xmsg", x.message); }
+}
+const xToggle = key => async e => {
+  xSync();
+  try { await api("POST", "/api/settings", {[key]: e.target.checked}); loadMon(); refresh(); }
+  catch (x) { e.target.checked = !e.target.checked; xSync(); note("#xmsg", x.message); }
+};
+$("#x-poe").onchange = xToggle("poe_ssh");
+$("#x-bands").onchange = xToggle("bands_ssh");
+const ENVN = {user: "SSH_USER", password: "SSH_PASSWORD", key_file: "SSH_KEY_FILE", port: "SSH_PORT"};
+$("#x-open").onclick = () => {
+  const s = MON.ssh || {};
+  $("#xd-user").value = s.user || ""; $("#xd-port").value = s.port && s.port !== 22 ? s.port : ""; $("#xd-pass").value = "";
+  $("#xd-pass").placeholder = s.password ? "Saved. Leave blank to keep it" : "Password";
+  const env = (s.env || []).map(k => ENVN[k]);
+  $("#xd-env").hidden = !env.length; $("#xd-env").textContent = `${env.join(", ")} ${env.length === 1 ? "is" : "are"} set in the environment and override${env.length === 1 ? "s" : ""} what you enter here.`;
+  $("#xd-clear").hidden = !s.user; note("#xd-err", ""); $("#xd").showModal();
+};
+$("#xd-x").onclick = () => $("#xd").close();
+$("#xd").onclick = e => { if (e.target === $("#xd")) $("#xd").close(); };
+$("#xd-save").onclick = async () => {
+  try {
+    await api("POST", "/api/ssh-login", {user: $("#xd-user").value, password: $("#xd-pass").value, port: $("#xd-port").value});
+    $("#xd").close(); note("#xmsg", "Saved."); loadMon();
+  } catch (x) { note("#xd-err", x.message); }
+};
+$("#xd-clear").onclick = async () => {
+  if (!confirm("Remove the saved SSH login? Anything that needs one will fail until you add another (or set SSH_USER in the environment).")) return;
+  try { await api("POST", "/api/ssh-login", {clear: true}); $("#xd").close(); note("#xmsg", "Removed."); loadMon(); }
+  catch (x) { note("#xd-err", x.message); }
+};
 
 const bytes = n => n < 1024 ? n + " B" : n < 1048576 ? (n / 1024).toFixed(0) + " KB" : n < 1073741824 ? (n / 1048576).toFixed(1) + " MB" : (n / 1073741824).toFixed(2) + " GB";
 async function loadStorage() {
