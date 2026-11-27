@@ -1,3 +1,15 @@
+v1.1.0 (TBD)
+-Support for UniFi API for network devices.
+    -This is now the preferred way of adding network devices.
+-Added notification support
+    -Webhook and SMTP notifications, each with multiple destinations.
+    -Notification batching option for large outages.
+-Support for SSO incoming.
+
+v1.0.1 (2026-11-27)
+-Fixed version label in Compose file.
+-Removed unneeded flag during account creation in Dockerfile.
+
 v1.0.0
 Release (2026-11-24)
     -Combined tiles on Network and Server pages into an overview.
