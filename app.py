@@ -1,6 +1,8 @@
-import base64, functools, hashlib, json, os, queue, re, secrets, shutil, socket, sqlite3, ssl, subprocess, threading, time, urllib.error, urllib.parse, urllib.request
+import base64, functools, hashlib, json, os, queue, re, secrets, shutil, smtplib, socket, sqlite3, ssl, subprocess, threading, time, urllib.error, urllib.parse, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
+from email.message import EmailMessage
+from email.utils import formatdate, make_msgid
 import paramiko
 from flask import Flask, g, jsonify, request, send_file, send_from_directory, session
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -132,9 +134,11 @@ def migrate():
         sql("PRAGMA user_version = 1")
 
 
-def save_sample(name, r):
+def save_sample(name, r, notify=True):  # notify=False: the controller is to blame, and it gets its own message
     sql("INSERT INTO samples (dev, ts, data, " + ", ".join("m_" + k for k in METRICS) + ") VALUES (?,?,?," + ",".join("?" * len(METRICS)) + ")",
         (name, r["ts"], json.dumps(r), *(r.get(k) for k in METRICS)))
+    if notify:
+        watch("device", name, "error" not in r, r.get("error", ""))
 
 
 def retention():  # days of history to keep: Settings first, then config.json, then 7
@@ -438,12 +442,14 @@ def poll_unifi(devs, ex):  # saves a sample for every device a site knows about 
         except (UnifiError, KeyError, TypeError, AttributeError) as e:
             msg = str(e) if isinstance(e, UnifiError) else "Unexpected reply from the controller."
             UF["state"][c["id"]] = {**UF["state"].get(c["id"], {}), "ok": False, "error": msg, "ts": time.time()}
+            watch("unifi", c["name"], False, msg)
             for d in rest:  # during an outage the devices it answered for last time show the problem; the others carry on over SSH
                 if API_NAMES.get(d["name"]) == c["id"]:
                     names[d["name"]] = c["id"]
-                    save_sample(d["name"], {"ts": time.time(), "error": f"UniFi API ({c['name']}): {msg}"})
+                    save_sample(d["name"], {"ts": time.time(), "error": f"UniFi API ({c['name']}): {msg}"}, notify=False)
             rest = [d for d in rest if d["name"] not in names]
             continue
+        watch("unifi", c["name"], True)
         got.update(part)
         names.update({n: c["id"] for n in part})
         rest = [d for d in rest if d["name"] not in part]
@@ -452,6 +458,7 @@ def poll_unifi(devs, ex):  # saves a sample for every device a site knows about 
     for k in [k for k in UF["state"] if k not in {c["id"] for c in unifi_sites()}]:  # a removed site is forgotten
         UF["state"].pop(k, None)
         UF["conn"].pop(k, None)
+    notify_prune("unifi", {c["name"] for c in unifi_sites()})
 
     def one(name):
         x, st, n = got[name]
@@ -574,6 +581,7 @@ def loop():
                     devs = poll_unifi(devs, ex)
                 list(ex.map(poll, devs))
             prune()
+            notify_prune("device", {d["name"] for d in devices()})
         except Exception as e:
             print("poll error:", e, flush=True)
         wake.wait(max(1, interval() - (time.time() - t0)))
@@ -741,7 +749,7 @@ def who():
     return None
 
 
-ADMIN_GET = ("/api/users", "/api/storage", "/api/hostkeys", "/api/security", "/api/unifi")  # reading these needs an admin
+ADMIN_GET = ("/api/users", "/api/storage", "/api/hostkeys", "/api/security", "/api/unifi", "/api/notify")  # reading these needs an admin
 PASSIVE = {"/api/data", "/api/servers"}  # background polling: does not count as someone using the page
 OPEN = {("GET", "/vendor/chart.umd.min.js"), ("GET", "/"), ("GET", "/healthz"), ("GET", "/api/me"), ("GET", "/api/brand"), ("POST", "/api/login"), ("POST", "/api/setup")}
 
@@ -881,6 +889,301 @@ def unifi_forget():  # devices removed by hand can be found again
     j = unifi_raw()
     j["ignored"] = []
     write_private(UNIF, j)
+    return jsonify(ok=True)
+
+
+# ---- Notifications: a message to webhooks and/or email (through your own mail server) when something stops answering and when it comes back.
+# Set up in Settings > Notifications (notify.json, 0600: webhook addresses and mail passwords never leave the server).
+NOTIFY = os.path.join(DATA, "notify.json")
+NEVENTS = ("device", "server", "unifi")  # network devices, servers and VMs, UniFi controllers
+NFORMATS = ("generic", "discord", "slack", "ntfy")
+NBLANK = {"webhook": {"url": "", "format": "generic", "verify": True},
+          "email": {"host": "", "port": 587, "security": "starttls", "user": "", "password": "", "verify": True, "sender": "", "to": ""}}  # what a new destination starts from
+NW = {}  # (kind, name) -> {"fails": checks failed in a row, "first": when the run began, "sent": whether it was reported}
+NQ = queue.Queue()  # messages waiting to go out, so a slow mail server never holds up the checks
+NLAST = {}  # destination id -> how its last message went
+BATCH_WAIT = 15  # with batching on, seconds a message is held so that others arriving with it can be combined
+nlock = threading.Lock()
+ADDR = re.compile(r"[^@\s,;<>]+@[^@\s,;<>]+")
+
+
+def notify_tidy(d):  # one saved destination, tidied so a hand-edited file can't break anything
+    t = d.get("type") if d.get("type") in NBLANK else "webhook"
+    b = {"id": str(d.get("id") or "")[:20], "type": t, "name": str(d.get("name") or "")[:40], "enabled": d.get("enabled") is True, "verify": d.get("verify") is not False}
+    if t == "webhook":
+        return {**b, "url": str(d.get("url") or ""), "format": d.get("format") if d.get("format") in NFORMATS else "generic"}
+    return {**b, "host": str(d.get("host") or ""), "port": whole(d.get("port", 587), 587, 1, 65535), "security": d.get("security") if d.get("security") in ("none", "starttls", "ssl") else "starttls",
+            "user": str(d.get("user") or ""), "password": str(d.get("password") or ""), "sender": str(d.get("sender") or ""), "to": str(d.get("to") or "")}
+
+
+def notify_saved():
+    j = read_json(NOTIFY, {})
+    j = j if isinstance(j, dict) else {}
+    ev, rows = j.get("events") if isinstance(j.get("events"), dict) else {}, j.get("destinations")
+    if not isinstance(rows, list):  # the first version kept one webhook and one email
+        rows = [{**j[k], "type": k, "id": k, "name": k.capitalize()} for k in ("webhook", "email") if isinstance(j.get(k), dict)]
+    batch = whole(j.get("batch", 0), 0, 0, 50)
+    return {"events": {k: ev.get(k, True) is not False for k in NEVENTS}, "after": whole(j.get("after", 3), 3, 1, 20), "batch": batch if batch >= 2 else 0,
+            "destinations": [notify_tidy(d) for d in rows if isinstance(d, dict) and d.get("id")]}
+
+
+def span(s):  # "5 min", "2 h", "3 days"
+    return f"{int(s)} s" if s < 90 else f"{round(s / 60)} min" if s < 5400 else f"{round(s / 3600)} h" if s < 129600 else f"{round(s / 86400)} days"
+
+
+def notify_msg(kind, name, state, since, fails, why, now):
+    noun, host = {"device": "Device", "server": "Server", "unifi": "UniFi controller"}[kind], ""
+    if kind != "unifi":
+        e = next((x for x in items("devices" if kind == "device" else "servers") if x.get("name") == name), {})
+        host, noun = str(e.get("host", "")), "VM" if e.get("type") == "vm" else noun
+    one = lambda t: re.sub(r"\s+", " ", str(t)).strip()  # one line, so a name can't break a header
+    name, host, why = one(name), one(host), one(why)
+    who, when = f"{name} ({host})" if host else name, time.strftime("%Y-%m-%d %H:%M %Z", time.localtime(since))
+    if state == "down":
+        title = f"{name} is " + ("unreachable" if kind == "unifi" else "offline")
+        text, line = f"{noun} {who} has failed {fails} check{'' if fails == 1 else 's'} in a row, since {when}." + (f" {why}" if why else ""), f"{noun} {who}" + (f": {why}" if why else "")
+    else:
+        title = f"{name} is " + ("reachable again" if kind == "unifi" else "back online")
+        text, why = f"{noun} {who} is answering again after {span(now - since)} (down since {when}).", ""
+        line = f"{noun} {who} (down for {span(now - since)})"
+    return {"event": f"{kind}_{state}", "state": state, "kind": kind, "name": name, "host": host, "reason": why, "since": since, "ts": now, "title": f"{brand()['name']}: {title}", "text": text, "line": line}
+
+
+def notify_digest(ms):  # several messages as one
+    down, up = [x for x in ms if x["state"] == "down"], [x for x in ms if x["state"] == "up"]
+    parts = [(f"{len(down)} offline", "Offline", down), (f"{len(up)} back online", "Back online", up)]
+    return {"event": "digest", "state": "down" if down else "up", "kind": "multiple", "name": "", "host": "", "reason": "", "since": min(x["since"] for x in ms), "ts": time.time(),
+            "title": f"{brand()['name']}: " + ", ".join(t for t, _, g in parts if g),
+            "text": "\n\n".join(f"{h} ({len(g)}):\n" + "\n".join("- " + x["line"] for x in g) for _, h, g in parts if g),
+            "items": [{**{k: x[k] for k in ("event", "state", "kind", "name", "host", "reason", "since")}, "time": x["ts"]} for x in ms]}
+
+
+def watch(kind, name, ok, why=""):  # every check's result comes through here: after `after` failures in a row it is reported, and again when it answers
+    try:
+        now = time.time()
+        with nlock:
+            w = NW.setdefault((kind, name), {"fails": 0, "first": None, "sent": False})
+            if ok:
+                first, sent, w["fails"], w["first"], w["sent"] = w["first"], w["sent"], 0, None, False
+                if not sent:
+                    return
+                state, fails = "up", 0
+            else:
+                w["fails"] += 1
+                w["first"] = w["first"] or now
+                if w["sent"] is not False:  # already reported (True), or muted because that kind was switched off (None): then its recovery isn't reported either
+                    return
+                c = notify_saved()
+                if w["fails"] < c["after"]:
+                    return
+                w["sent"], first, state, fails = True if c["events"].get(kind) else None, w["first"], "down", w["fails"]
+                if not w["sent"]:
+                    return
+        NQ.put(notify_msg(kind, name, state, first, fails, why, now))
+    except Exception as e:
+        print("notification error:", e, flush=True)
+
+
+def notify_prune(kind, keep):  # a removed device, server or site is forgotten
+    with nlock:
+        for k in [k for k in NW if k[0] == kind and k[1] not in keep]:
+            del NW[k]
+
+
+def mime_header(t):  # ntfy reads non-ASCII header text in this form
+    return t if t.isascii() else "=?UTF-8?B?" + base64.b64encode(t.encode()).decode() + "?="
+
+
+def tls_context(verify):
+    ctx = ssl.create_default_context()
+    if not verify:
+        ctx.check_hostname, ctx.verify_mode = False, ssl.CERT_NONE
+    return ctx
+
+
+def post_webhook(w, m):
+    h, f, down = {"User-Agent": f"Beacon/{VERSION}"}, w["format"], m["state"] == "down"
+    if f == "ntfy":  # plain text, with the title and a priority in headers
+        body = m["text"].encode()
+        h.update({"Content-Type": "text/plain; charset=utf-8", "Title": mime_header(m["title"]), "Priority": "high" if down else "default", "Tags": "rotating_light" if down else "white_check_mark"})
+    else:
+        obj = {"discord": {"content": f"**{m['title']}**\n{m['text']}"[:2000]}, "slack": {"text": f"*{m['title']}*\n{m['text']}"}}.get(f) or {
+            "source": "beacon", "version": VERSION, "event": m["event"], "state": m["state"], "kind": m["kind"], "name": m["name"], "host": m["host"], "reason": m["reason"], "since": m["since"], "time": m["ts"], "title": m["title"], "message": m["text"],
+            **({"items": m["items"]} if "items" in m else {})}
+        body, h["Content-Type"] = json.dumps(obj).encode(), "application/json"
+    with urllib.request.urlopen(urllib.request.Request(w["url"], data=body, headers=h, method="POST"), timeout=10, context=tls_context(w["verify"])) as r:
+        r.read(1000)
+
+
+def send_mail(c, m):
+    msg = EmailMessage()
+    msg["Subject"], msg["From"], msg["To"], msg["Date"], msg["Message-ID"] = m["title"], c["sender"], c["to"], formatdate(localtime=True), make_msgid()
+    msg.set_content(m["text"] + f"\n\nSent by {brand()['name']}.")
+    ctx = tls_context(c["verify"])
+    with (smtplib.SMTP_SSL(c["host"], c["port"], timeout=15, context=ctx) if c["security"] == "ssl" else smtplib.SMTP(c["host"], c["port"], timeout=15)) as s:
+        if c["security"] == "starttls":
+            s.starttls(context=ctx)
+        if c["user"]:
+            s.login(c["user"], c["password"])
+        s.send_message(msg)
+
+
+def notify_error(e):  # a short reason a message didn't go out; never the webhook address or the password
+    if isinstance(e, urllib.error.HTTPError):
+        return f"The webhook answered with an error ({e.code} {e.reason})."
+    if isinstance(e, urllib.error.URLError) and isinstance(e.reason, Exception):
+        e = e.reason
+    if isinstance(e, smtplib.SMTPAuthenticationError):
+        return "The mail server refused the user name or password."
+    if isinstance(e, smtplib.SMTPRecipientsRefused):
+        return "The mail server refused the To address."
+    if isinstance(e, smtplib.SMTPSenderRefused):
+        return "The mail server refused the From address."
+    if isinstance(e, ssl.SSLError):
+        return f"The secure connection failed ({str(getattr(e, 'reason', None) or e)[:80]}). Check the Security setting and port, or untick Check the certificate."
+    if isinstance(e, smtplib.SMTPException):
+        return "The mail server said: " + str(e)[:150]
+    if isinstance(e, TimeoutError):
+        return "It took too long to answer."
+    if isinstance(e, OSError):
+        return "Couldn't connect: " + str(e.strerror or e)[:100]
+    return "Unexpected error: " + type(e).__name__
+
+
+def notify_worker():
+    while True:
+        msgs = [NQ.get()]
+        try:
+            if notify_saved()["batch"]:  # hold on a moment, so that messages arriving together can go out as one
+                time.sleep(BATCH_WAIT)
+                while not NQ.empty():
+                    msgs.append(NQ.get_nowait())
+            c = notify_saved()
+            msgs = [x for x in msgs if c["events"].get(x["kind"])]
+            for group in [msgs] if c["batch"] and len(msgs) >= c["batch"] else [[x] for x in msgs]:
+                m = group[0] if len(group) == 1 else notify_digest(group)
+                for d in c["destinations"]:
+                    if d["enabled"]:
+                        try:
+                            (post_webhook if d["type"] == "webhook" else send_mail)(d, m)
+                            NLAST[d["id"]] = {"ts": time.time(), "ok": True, "error": ""}
+                        except Exception as e:
+                            NLAST[d["id"]] = {"ts": time.time(), "ok": False, "error": notify_error(e)}
+                            print(f"notification to {d['name']} failed: {NLAST[d['id']]['error']}", flush=True)
+        except Exception as e:
+            print("notification error:", e, flush=True)
+
+
+def notify_dest(j, cur, test=False):  # one destination's settings as the page sends them, checked; a blank secret keeps the saved one -> (settings, error)
+    t, on = j["type"], j.get("enabled") is True
+    need, ver = test or on, j.get("verify") is not False
+    if t == "webhook":
+        url = (j["url"].strip() if isinstance(j.get("url"), str) else "") or cur["url"]
+        try:
+            p = urllib.parse.urlsplit(url)
+            good = p.scheme in ("http", "https") and bool(p.hostname) and len(url) <= 500
+        except ValueError:
+            good = False
+        if (url and not good) or (need and not url):
+            return None, "Enter the webhook address, starting with http:// or https://."
+        return {"enabled": on, "verify": ver, "url": url, "format": j.get("format") if j.get("format") in NFORMATS else "generic"}, None
+    host, sec = str(j.get("host") or "").strip(), j.get("security") if j.get("security") in ("none", "starttls", "ssl") else "starttls"
+    try:
+        port = int(j["port"]) if str(j.get("port", "")).strip() else 587
+    except (TypeError, ValueError):
+        port = 0
+    user = str(j.get("user") or "").strip()[:200]
+    pw = ((j["password"] if isinstance(j.get("password"), str) else "") or cur["password"])[:200] if user else ""
+    sender, to = str(j.get("sender") or "").strip(), [x for x in re.split(r"[,;\s]+", str(j.get("to") or "")) if x]
+    if host and not HOST.match(host):
+        return None, "That doesn't look like a mail server name or address."
+    if not 1 <= port <= 65535:
+        return None, "Enter a port from 1 to 65535."
+    if sender and not ADDR.fullmatch(sender):
+        return None, "Enter the From address as name@example.com."
+    if len(to) > 10 or not all(ADDR.fullmatch(x) for x in to):
+        return None, "Check the To addresses: up to 10, separated by commas."
+    if need and not (host and sender and to):
+        return None, "Fill in the server, the From address and at least one To address."
+    if need and user and not pw:
+        return None, "Enter the password for that user name."
+    return {"enabled": on, "verify": ver, "host": host, "port": port, "security": sec, "user": user, "password": pw, "sender": sender, "to": ", ".join(to)}, None
+
+
+def notify_pub(d):  # a destination as the page sees it: no webhook address, no password
+    b = {k: d[k] for k in ("id", "type", "name", "enabled", "verify")}
+    if d["type"] == "webhook":
+        try:
+            hint = urllib.parse.urlsplit(d["url"]).hostname or ""
+        except ValueError:
+            hint = ""
+        return {**b, "format": d["format"], "set": bool(d["url"]), "hint": hint}
+    return {**b, **{k: d[k] for k in ("host", "port", "security", "user", "sender", "to")}, "password": bool(d["password"])}
+
+
+@app.get("/api/notify")
+def notify_info():  # admin: what is sent and where
+    c = notify_saved()
+    return jsonify(events=c["events"], after=c["after"], batch=c["batch"], batch_wait=BATCH_WAIT, now=time.time(), last=NLAST, destinations=[notify_pub(d) for d in c["destinations"]])
+
+
+@app.put("/api/notify")
+@locked
+def set_notify():  # events, the number of failed checks and batching, and/or the whole list of destinations; anything left out stays as it is
+    j, cur = request.get_json(silent=True) or {}, notify_saved()
+    ev = j.get("events") if isinstance(j.get("events"), dict) else {}
+    new = {"events": {k: ev[k] is True if k in ev else cur["events"][k] for k in NEVENTS}, "after": cur["after"], "batch": cur["batch"], "destinations": cur["destinations"]}
+    for k, lo, hi, msg in (("after", 1, 20, "Wait for 1 to 20 failed checks before sending."), ("batch", 2, 50, "Combine from 2 to 50 messages, or switch it off.")):
+        if k in j:
+            try:
+                new[k] = int(j[k])
+            except (TypeError, ValueError):
+                new[k] = -1
+            if not lo <= new[k] <= hi and not (k == "batch" and new[k] == 0):
+                return bad(msg)
+    if "destinations" in j:
+        rows, old, out, ids, names = j["destinations"], {d["id"]: d for d in cur["destinations"]}, [], set(), set()
+        if not isinstance(rows, list) or len(rows) > 20:
+            return bad("Add up to 20 destinations.")
+        for r in rows:
+            r = r if isinstance(r, dict) else {}
+            name = str(r.get("name", "")).strip()[:40]
+            if not name or name.lower() in names:
+                return bad("Give every destination its own name." if name else "Give every destination a name.")
+            names.add(name.lower())
+            t, rid = r.get("type"), str(r.get("id") or "")
+            if t not in NBLANK:
+                return bad(f"{name}: unknown kind of destination.")
+            was = old.get(rid) if old.get(rid, {}).get("type") == t else None
+            d, err = notify_dest({**r, "type": t}, was or NBLANK[t])
+            if err:
+                return bad(f"{name}: {err}")
+            rid = rid if was and rid not in ids else secrets.token_hex(4)
+            ids.add(rid)
+            out.append({"id": rid, "name": name, "type": t, **d})
+        new["destinations"] = out
+        for k in [k for k in NLAST if k not in ids]:
+            del NLAST[k]
+    write_private(NOTIFY, new)
+    return notify_info()
+
+
+@app.post("/api/notify/test")
+def test_notify():  # sends one message using one destination's settings as they are on the page, saving nothing
+    j = request.get_json(silent=True) or {}
+    t = j.get("type")
+    if t not in NBLANK:
+        return bad("Unknown kind of destination.")
+    was = next((d for d in notify_saved()["destinations"] if d["id"] == j.get("id") and d["type"] == t), None)
+    d, err = notify_dest(j, was or NBLANK[t], test=True)
+    if err:
+        return jsonify(ok=False, error=err)
+    m = {"event": "test", "state": "test", "kind": "test", "name": brand()["name"], "host": "", "reason": "", "since": None, "ts": time.time(), "line": "",
+         "title": f"{brand()['name']}: test message", "text": "If you can read this, notifications from Beacon will reach you here."}
+    try:
+        (post_webhook if t == "webhook" else send_mail)(d, m)
+    except Exception as e:
+        return jsonify(ok=False, error=notify_error(e))
     return jsonify(ok=True)
 
 
@@ -1216,6 +1519,8 @@ def sloop():
                 res = list(ex.map(lambda s: (s["name"], ping(s["host"])), items("servers")))
             for n, ms in res:
                 sql("INSERT INTO pings VALUES (?,?,?)", (n, t0, ms))
+                watch("server", n, ms is not None, "It doesn't answer ping.")
+            notify_prune("server", {n for n, _ in res})
         except Exception as e:
             print("ping error:", e, flush=True)
         swake.wait(max(1, conf()["server_interval"] - (time.time() - t0)))
@@ -1505,3 +1810,4 @@ for _a in (read_json(os.path.join(DATA, "dash.json"), {}).get("apps", {}) if isi
         queue_icon(_a.get("name", ""))
 threading.Thread(target=sloop, daemon=True).start()
 threading.Thread(target=dloop, daemon=True).start()
+threading.Thread(target=notify_worker, daemon=True).start()

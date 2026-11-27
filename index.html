@@ -100,7 +100,7 @@ h1{display:flex;align-items:center;gap:.5rem}
 .av{display:grid;place-items:center;width:1.6rem;height:1.6rem;border-radius:50%;background:var(--blue);color:var(--on-blue);font-style:normal;font-size:.8rem;font-weight:600}
 dialog{padding:0;border:1px solid var(--rule);border-radius:var(--r);color:var(--ink);background:color-mix(in srgb,var(--field) 80%,transparent);backdrop-filter:blur(40px) saturate(180%);-webkit-backdrop-filter:blur(40px) saturate(180%);box-shadow:var(--sh);width:min(780px,94vw);height:min(620px,90vh);overflow:hidden}
 dialog[open]{display:grid;grid-template-columns:11.5rem 1fr}
-#kd,#ud,#cd{width:min(480px,94vw);height:auto;max-height:85vh;overflow:auto}#ud{width:min(660px,94vw)}#cd{width:min(440px,94vw)}#kd[open],#ud[open],#cd[open]{display:block}#ud,#cd{height:fit-content}#ud label{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin:.55rem 0}#ud input:not([type=checkbox]){width:min(18rem,100%)}#ud label.chk{justify-content:flex-start}.ds{border:1px solid var(--rule);border-radius:var(--r);padding:.8rem .9rem;margin:.7rem 0;display:grid;grid-template-columns:1fr 1fr;gap:.55rem .8rem}.ds .wide{grid-column:1/-1}#ud .ds label{display:grid;gap:.2rem;margin:0;font-size:.82rem;color:var(--mute);justify-content:stretch}#ud .ds label.chk{display:flex;align-items:center;align-self:end;color:var(--ink);font-size:.9rem;padding-bottom:.45rem}#ud .ds input:not([type=checkbox]){width:100%;color:var(--ink)}#ud .sf{position:sticky;bottom:-1.2rem;margin:.8rem -1.4rem -1.2rem;padding:.75rem 1.4rem;border-top:1px solid var(--rule);background:color-mix(in srgb,var(--field) 92%,transparent);backdrop-filter:blur(12px)}.dr{display:flex;gap:.6rem;align-items:center;justify-content:flex-end}.dr .f-res{flex:1;min-width:0;margin:0}.sbody section.uni{align-content:stretch;grid-template-rows:auto 1fr auto;min-height:100%}#u-foot{position:sticky;bottom:-1.25rem;margin:0 -1.5rem -1.25rem;padding:.75rem 1.5rem;display:flex;justify-content:space-between;align-items:center;gap:.6rem;border-top:1px solid var(--rule);background:color-mix(in srgb,var(--field) 88%,transparent);backdrop-filter:blur(12px)}.us{border:1px solid var(--rule);border-radius:var(--r);padding:.8rem 1rem;display:grid;gap:.55rem}.uh{display:flex;justify-content:space-between;align-items:center;gap:.8rem}.uh small{color:var(--mute)}.neon{--nc:#39ff88;display:inline-block;padding:.12rem .85rem;border-radius:999px;border:1px solid var(--nc);background:#0b0e14;color:var(--nc);font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;text-shadow:0 0 3px var(--nc),0 0 9px var(--nc),0 0 18px var(--nc);box-shadow:0 0 7px color-mix(in srgb,var(--nc) 60%,transparent),inset 0 0 7px color-mix(in srgb,var(--nc) 28%,transparent)}.neon.err{--nc:#ff4d6d}.neon.wait{--nc:#ffb02e}@keyframes flick{0%,18%,22%,62%,64%,100%{opacity:1}20%,63%{opacity:.5}}.neon.err,.neon.wait{animation:flick 3.2s infinite}@media(prefers-reduced-motion:reduce){.neon{animation:none!important}}.tile.list .c4,.tile.list .lh .hs[data-c="4"]{display:none}.tile.list.msite .c4,.tile.list.msite .lh .hs[data-c="4"]{display:block}.tile.list.msite .lh,.tile.list.msite .lr{grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1.2fr) minmax(0,.8fr) minmax(0,.8fr) 1rem}.msite .lh .hs[data-c="0"],.msite .lr .nm{order:-2}.msite .lh .hs[data-c="4"],.msite .lr .c4{order:-1}.sitef{margin-left:auto;max-width:11rem}@container(max-width:560px){.tile.list.msite .lh .hs[data-c="4"],.tile.list.msite .lr .c4{display:none}.tile.list.msite:not(.apps) .lh,.tile.list.msite:not(.apps) .lr{grid-template-columns:minmax(0,1.3fr) minmax(0,1.3fr) 3rem .8rem;gap:.5rem}}.cl{list-style:none;margin:.7rem 0 0;padding:0;max-height:50vh;overflow:auto}.cl li{display:grid;grid-template-columns:auto 1fr auto auto;gap:.6rem;align-items:center;padding:.5rem .2rem;border-bottom:1px solid var(--rule)}.cl li:last-child{border:0}.tag{font-size:.72rem;padding:.1rem .6rem;border-radius:999px;background:color-mix(in srgb,var(--blue) 14%,transparent);color:var(--blue)}.kb{padding:1.2rem 1.4rem}.kr{display:flex;gap:.7rem;align-items:flex-start;padding:.5rem 0;border-bottom:1px solid var(--rule);cursor:pointer}.kr input{margin-top:.25rem}.kr small{display:block;opacity:.7;overflow-wrap:anywhere}#klist{max-height:40vh;overflow:auto}
+#kd,#ud,#nd,#cd{width:min(480px,94vw);height:auto;max-height:85vh;overflow:auto}#ud,#nd{width:min(660px,94vw)}#cd{width:min(440px,94vw)}#kd[open],#ud[open],#nd[open],#cd[open]{display:block}#ud,#nd,#cd{height:fit-content}#ud label,#nd label{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin:.55rem 0}#ud input:not([type=checkbox]),#nd input:not([type=checkbox]){width:min(18rem,100%)}#ud label.chk,#nd label.chk{justify-content:flex-start}.ds{border:1px solid var(--rule);border-radius:var(--r);padding:.8rem .9rem;margin:.7rem 0;display:grid;grid-template-columns:1fr 1fr;gap:.55rem .8rem}.ds .wide{grid-column:1/-1}#ud .ds label,#nd .ds label{display:grid;gap:.2rem;margin:0;font-size:.82rem;color:var(--mute);justify-content:stretch}#ud .ds label.chk,#nd .ds label.chk{display:flex;align-items:center;align-self:end;color:var(--ink);font-size:.9rem;padding-bottom:.45rem}#ud .ds input:not([type=checkbox]),#nd .ds input:not([type=checkbox]),#nd .ds select{width:100%;color:var(--ink)}#ud .sf,#nd .sf{position:sticky;bottom:-1.2rem;margin:.8rem -1.4rem -1.2rem;padding:.75rem 1.4rem;border-top:1px solid var(--rule);background:color-mix(in srgb,var(--field) 92%,transparent);backdrop-filter:blur(12px)}.dr{display:flex;gap:.6rem;align-items:center;justify-content:flex-end}.dr .f-res{flex:1;min-width:0;margin:0}.sbody section.uni{align-content:stretch;grid-template-rows:auto 1fr auto;min-height:100%}#u-foot{position:sticky;bottom:-1.25rem;margin:0 -1.5rem -1.25rem;padding:.75rem 1.5rem;display:flex;justify-content:space-between;align-items:center;gap:.6rem;border-top:1px solid var(--rule);background:color-mix(in srgb,var(--field) 88%,transparent);backdrop-filter:blur(12px)}.us{border:1px solid var(--rule);border-radius:var(--r);padding:.8rem 1rem;display:grid;gap:.55rem}.uh{display:flex;justify-content:space-between;align-items:center;gap:.8rem}.uh small{color:var(--mute)}.neon{--nc:#39ff88;display:inline-block;padding:.12rem .85rem;border-radius:999px;border:1px solid var(--nc);background:#0b0e14;color:var(--nc);font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;text-shadow:0 0 3px var(--nc),0 0 9px var(--nc),0 0 18px var(--nc);box-shadow:0 0 7px color-mix(in srgb,var(--nc) 60%,transparent),inset 0 0 7px color-mix(in srgb,var(--nc) 28%,transparent)}.neon.err{--nc:#ff4d6d}.neon.wait{--nc:#ffb02e}@keyframes flick{0%,18%,22%,62%,64%,100%{opacity:1}20%,63%{opacity:.5}}.neon.err,.neon.wait{animation:flick 3.2s infinite}@media(prefers-reduced-motion:reduce){.neon{animation:none!important}}.tile.list .c4,.tile.list .lh .hs[data-c="4"]{display:none}.tile.list.msite .c4,.tile.list.msite .lh .hs[data-c="4"]{display:block}.tile.list.msite .lh,.tile.list.msite .lr{grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1.2fr) minmax(0,.8fr) minmax(0,.8fr) 1rem}.msite .lh .hs[data-c="0"],.msite .lr .nm{order:-2}.msite .lh .hs[data-c="4"],.msite .lr .c4{order:-1}.sitef{margin-left:auto;max-width:11rem}@container(max-width:560px){.tile.list.msite .lh .hs[data-c="4"],.tile.list.msite .lr .c4{display:none}.tile.list.msite:not(.apps) .lh,.tile.list.msite:not(.apps) .lr{grid-template-columns:minmax(0,1.3fr) minmax(0,1.3fr) 3rem .8rem;gap:.5rem}}.cl{list-style:none;margin:.7rem 0 0;padding:0;max-height:50vh;overflow:auto}.cl li{display:grid;grid-template-columns:auto 1fr auto auto;gap:.6rem;align-items:center;padding:.5rem .2rem;border-bottom:1px solid var(--rule)}.cl li:last-child{border:0}.tag{font-size:.72rem;padding:.1rem .6rem;border-radius:999px;background:color-mix(in srgb,var(--blue) 14%,transparent);color:var(--blue)}.kb{padding:1.2rem 1.4rem}.kr{display:flex;gap:.7rem;align-items:flex-start;padding:.5rem 0;border-bottom:1px solid var(--rule);cursor:pointer}.kr input{margin-top:.25rem}.kr small{display:block;opacity:.7;overflow-wrap:anywhere}#klist{max-height:40vh;overflow:auto}
 dialog::backdrop{background:rgba(0,0,0,.28);backdrop-filter:blur(4px)}
 #sn{display:flex;flex-direction:column;gap:2px;padding:1rem .75rem;border-right:1px solid var(--rule)}
 #sn button{text-align:left;border:0;background:none;color:var(--mute)}#sn button[aria-current=true]{background:color-mix(in srgb,var(--blue) 16%,transparent);color:var(--ink)}
@@ -241,7 +241,7 @@ textarea{font:inherit;padding:.5rem .65rem;border:1px solid var(--rule);border-r
 <span class="uw"><button id="who" class="chip" hidden aria-haspopup="menu" aria-expanded="false"><i class="av"></i><span id="wn"></span></button>
 <div id="um" class="menu sm" role="menu" hidden><p class="mute" style="margin:0">Signed in as <b id="umn"></b><br><span id="umr"></span></p><button id="umo" role="menuitem">Sign out</button></div></span></div></header>
 <dialog id="sd">
-<div id="sn"><button data-s="look">Appearance</button><button data-s="mon" data-r="3">Monitoring</button><button data-s="unifi" data-r="3">UniFi</button><button data-s="sec" data-r="3">Security</button><button data-s="brand" data-r="3">Branding</button><button data-s="users" data-r="3">Users</button><button data-s="account" data-r="acct">Account</button><button data-s="fb" data-r="ng">Feedback</button><button data-s="about">About</button></div>
+<div id="sn"><button data-s="look">Appearance</button><button data-s="mon" data-r="3">Monitoring</button><button data-s="unifi" data-r="3">UniFi</button><button data-s="notify" data-r="3">Notifications</button><button data-s="sec" data-r="3">Security</button><button data-s="brand" data-r="3">Branding</button><button data-s="users" data-r="3">Users</button><button data-s="account" data-r="acct">Account</button><button data-s="fb" data-r="ng">Feedback</button><button data-s="about">About</button></div>
 <div class="sbody"><button id="sx" class="close" aria-label="Close">✕</button>
 <section data-s="look"><h3>Appearance</h3>
 <label>Style <select id="style"><option value="honeycrisp">Honeycrisp</option><option value="pastel">Pastel</option><option value="stark">Stark</option></select></label>
@@ -260,6 +260,21 @@ textarea{font:inherit;padding:.5rem .65rem;border:1px solid var(--rule);border-r
 <section data-s="unifi" class="uni" hidden><h3>UniFi</h3>
 <div><h4 style="margin:0 0 .6rem;font-size:.95rem">Sites</h4><div id="u-list" style="display:grid;gap:.7rem"></div><p id="u-disc" class="mute" style="margin:.8rem 0 0"></p><span id="umsg" class="mute"></span></div>
 <div id="u-foot"><button id="u-cfg">Configure…</button><button id="u-check" disabled>Check for new devices now</button></div></section>
+<section data-s="notify" hidden><h3>Notifications</h3>
+<p class="mute" style="margin:0">Beacon sends a message when something stops answering, and another when it answers again. Choose what to hear about and where it goes.</p>
+<div class="us"><b>Send a message when</b>
+<label class="chk"><input type="checkbox" id="n-device"> A network device goes offline or comes back</label>
+<label class="chk"><input type="checkbox" id="n-server"> A server or VM stops answering ping or comes back</label>
+<label class="chk"><input type="checkbox" id="n-unifi"> A UniFi controller can't be reached or comes back</label>
+<div class="row" style="justify-content:flex-start"><label>Report after <input id="n-after" type="number" min="1" max="20"> failed checks in a row</label></div>
+<p class="mute" style="margin:0">A higher number avoids messages about a single missed check. Network devices are checked and servers pinged on the intervals set under Monitoring.</p>
+<label class="chk"><input type="checkbox" id="n-batch"> Combine many messages into one</label>
+<div class="row" id="n-bwrap" style="justify-content:flex-start"><label>Combine when at least <input id="n-bmin" type="number" min="2" max="50"> messages arrive together</label></div>
+<p id="n-bhelp" class="mute" style="margin:0"></p>
+<div class="row"><span id="nmsg" class="mute"></span><button id="nsave" class="pri">Save</button></div></div>
+<div><h4 style="margin:0 0 .6rem;font-size:.95rem">Destinations</h4><div id="n-list" style="display:grid;gap:.7rem"></div><span id="ndmsg" class="mute"></span></div>
+<div><button id="n-cfg">Configure…</button></div>
+<p class="mute" style="margin:0">Every message goes to each destination that is switched on. Webhook addresses and mail passwords are kept on the server and never sent back to this page.</p></section>
 <section data-s="sec" hidden><h3>Security</h3>
 <div class="row"><label>Sign out after <input id="idle" type="number" min="0" max="1440"> minutes of inactivity</label><button id="isave" class="pri">Save</button></div>
 <span id="imsg" class="mute"></span>
@@ -319,6 +334,12 @@ textarea{font:inherit;padding:.5rem .65rem;border:1px solid var(--rule);border-r
 <div class="dr" style="justify-content:flex-start;margin-top:.4rem"><button type="button" id="ud-forget" hidden title="Devices you removed from the list are skipped by the check. This lets it find them again."></button></div>
 <span id="ud-err" class="err"></span>
 <div class="dr sf"><button type="button" id="ud-x">Cancel</button><button type="button" id="ud-save" class="pri">Save</button></div></div></dialog>
+<dialog id="nd"><div class="kb"><h3>Configure destinations</h3>
+<p class="mute">Add each place Beacon should send messages to: a webhook, or an email through your own mail server. Beacon doesn't deliver mail itself. Webhook addresses and passwords are kept on the server and never sent back to the browser.</p>
+<div id="nd-rows"></div>
+<div class="dr" style="justify-content:flex-start"><button type="button" id="nd-addw">Add a webhook</button><button type="button" id="nd-adde">Add an email</button></div>
+<span id="nd-err" class="err"></span>
+<div class="dr sf"><button type="button" id="nd-x">Cancel</button><button type="button" id="nd-save" class="pri">Save</button></div></div></dialog>
 <dialog id="cd"><div class="kb"><h3 id="cd-t"></h3><div id="cd-b"></div><div class="dr" style="margin-top:.9rem"><button type="button" id="cd-ok" class="pri" autofocus>OK</button></div></div></dialog>
 <dialog id="kd"><div class="kb"><h3>Forget SSH host keys</h3>
 <p class="mute">A forgotten device is trusted again the next time Beacon connects to it, so only do this for devices you reset or replaced, on a network you trust.</p>
@@ -1079,12 +1100,13 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") $("#um").hid
 $("#so").onclick = signOut;
 
 // settings dialog
-const clearNotes = () => ["mmsg", "umsg", "ud-err", "imsg", "amsg", "hkmsg", "kerr", "bmsg", "perr", "uerr", "fb-msg", "st-msg"].forEach(i => note("#" + i, ""));
+const clearNotes = () => ["mmsg", "umsg", "ud-err", "imsg", "amsg", "hkmsg", "kerr", "bmsg", "nmsg", "ndmsg", "nd-err", "perr", "uerr", "fb-msg", "st-msg"].forEach(i => note("#" + i, ""));
 function showSec(s) {
   clearNotes();
   $("#sd").querySelectorAll("[data-s]").forEach(e => e.tagName === "SECTION" ? e.hidden = e.dataset.s !== s : e.setAttribute("aria-current", e.dataset.s === s));
   uStop();
   if (s === "unifi") { loadUnifi(); uTimer = setInterval(loadUnifi, 10000); }
+  if (s === "notify") loadNotify();
   if (s === "users") loadUsers();
   if (s === "fb") fbInit();
   if (s === "about" && can(3)) loadStorage();
@@ -1191,6 +1213,94 @@ $("#ud-save").onclick = async () => {
     await api("PUT", "/api/unifi", {sites: [...document.querySelectorAll("#ud-sites .ds")].map(rowData), discover: {enabled: $("#ud-auto").checked, mode: $("#ud-mode").value, hours: $("#ud-hours").value, at: $("#ud-at").value}});
     $("#ud").close(); note("#umsg", "Saved."); loadUnifi(); refresh();
   } catch (x) { note("#ud-err", x.message); }
+};
+
+// Notifications: what is sent, and the list of places it goes (webhooks and emails), set up like the UniFi sites. Webhook addresses and mail passwords stay on the server; a blank box keeps what is saved.
+let NT = {destinations: [], last: {}};
+const NK = ["device", "server", "unifi"], PORTS = {starttls: 587, ssl: 465, none: 25}, NTYPE = {webhook: "Webhook", email: "Email"}, NFMT = {generic: "Generic JSON", discord: "Discord", slack: "Slack", ntfy: "ntfy"};
+async function fetchNotify() { const r = await api("GET", "/api/notify"); NT = r; UNI.skew = r.now - Date.now() / 1000; return r; }
+const nSync = () => { const on = $("#n-batch").checked; $("#n-bmin").disabled = !on; $("#n-bwrap").style.opacity = on ? 1 : .5; };
+function fillEvents(r) {
+  NK.forEach(k => { $("#n-" + k).checked = r.events[k]; });
+  $("#n-after").value = r.after; $("#n-batch").checked = r.batch > 0; $("#n-bmin").value = r.batch || 5; nSync();
+  $("#n-bhelp").textContent = `Messages are held for up to ${r.batch_wait} seconds so that ones arriving together can be combined. When at least this many arrive in that time they go out as one message; fewer go out separately. Switch it off to send every message straight away.`;
+}
+function renderDest() {
+  const d = NT.destinations;
+  $("#n-list").innerHTML = d.length ? d.map(x => {
+    const l = NT.last[x.id], st = !x.enabled ? `<span class="mute">Off</span>` : l && !l.ok ? `<span class="neon err">Failing</span>` : `<span class="neon">On</span>`;
+    return `<div class="us"><div class="uh"><span><b>${esc(x.name)}</b> <small>${NTYPE[x.type]}</small></span>${st}</div>
+<dl><dt>Goes to</dt><dd>${x.type === "webhook" ? NFMT[x.format] + (x.hint ? " · " + esc(x.hint) : "") : esc(x.to) + " · via " + esc(x.host) + ":" + x.port}</dd><dt>Last message</dt><dd>${l ? (l.ok ? "Sent " : "Failed ") + agoT(l.ts).toLowerCase() : "None yet"}</dd></dl>
+${l && !l.ok ? `<div class="bad">${esc(l.error)}</div>` : ""}</div>`;
+  }).join("") : `<p class="mute" style="margin:0">No destinations yet. Choose Configure… to add a webhook or an email.</p>`;
+}
+async function loadNotify() {
+  try { const r = await fetchNotify(); fillEvents(r); renderDest(); }
+  catch (x) { note("#nmsg", x.message); }
+}
+$("#n-batch").onchange = () => { if ($("#n-batch").checked && !$("#n-bmin").value) $("#n-bmin").value = 5; nSync(); };
+$("#nsave").onclick = async () => {
+  const b = $("#nsave"); b.disabled = true;
+  try {
+    const r = await api("PUT", "/api/notify", {events: Object.fromEntries(NK.map(k => [k, $("#n-" + k).checked])), after: $("#n-after").value, batch: $("#n-batch").checked ? $("#n-bmin").value : 0});
+    NT = r; fillEvents(r); renderDest(); note("#nmsg", "Saved.");
+  } catch (x) { note("#nmsg", x.message); }
+  b.disabled = false;
+};
+const nrowHTML = d => {
+  const w = d.type === "webhook", opt = (o, v) => Object.entries(o).map(([k, t]) => `<option value="${k}"${k === v ? " selected" : ""}>${t}</option>`).join("");
+  return `<div class="ds" data-id="${esc(d.id || "")}" data-type="${d.type}"><b class="wide">${NTYPE[d.type]}</b>
+<label>Name <input class="f-name" maxlength="40" value="${esc(d.name || "")}"></label>
+${w ? `<label>Format <select class="f-fmt">${opt(NFMT, d.format)}</select></label>
+<label class="wide">Address <input class="f-url" type="url" autocomplete="off" placeholder="${d.set ? "Saved (" + esc(d.hint) + "). Leave blank to keep it" : "https://…"}"></label>`
+: `<label>Mail server <input class="f-host" autocomplete="off" placeholder="smtp.example.com" value="${esc(d.host || "")}"></label>
+<label>Security <select class="f-sec">${opt({starttls: "STARTTLS (usually port 587)", ssl: "SSL/TLS (usually port 465)", none: "None (usually port 25)"}, d.security)}</select></label>
+<label>Port <input class="f-port" type="number" min="1" max="65535" value="${d.port}"></label>
+<label>User name <input class="f-user" autocomplete="off" placeholder="Optional" value="${esc(d.user || "")}"></label>
+<label>Password <input class="f-pw" type="password" autocomplete="new-password" placeholder="${d.password ? "Saved. Leave blank to keep it" : ""}"></label>
+<label>From <input class="f-from" autocomplete="off" placeholder="beacon@example.com" value="${esc(d.sender || "")}"></label>
+<label class="wide">To <input class="f-to" autocomplete="off" placeholder="you@example.com, other@example.com" value="${esc(d.to || "")}"></label>`}
+<label class="chk"><input type="checkbox" class="f-on"${d.enabled ? " checked" : ""}> Send messages here</label>
+<label class="chk"><input type="checkbox" class="f-tls"${d.verify ? " checked" : ""}> Check the certificate</label>
+<div class="dr wide"><span class="f-res mute"></span><button type="button" class="f-test">Test</button><button type="button" class="f-del">Remove</button></div></div>`;
+};
+const nData = r => {
+  const q = s => r.querySelector(s), t = r.dataset.type, o = {id: r.dataset.id, type: t, name: q(".f-name").value.trim(), enabled: q(".f-on").checked, verify: q(".f-tls").checked};
+  return t === "webhook" ? {...o, url: q(".f-url").value.trim(), format: q(".f-fmt").value}
+    : {...o, host: q(".f-host").value.trim(), port: q(".f-port").value, security: q(".f-sec").value, user: q(".f-user").value.trim(), password: q(".f-pw").value, sender: q(".f-from").value.trim(), to: q(".f-to").value};
+};
+const nAdd = type => {
+  const names = [...document.querySelectorAll("#nd-rows .f-name")].map(i => i.value.trim().toLowerCase()); let n = 1, name = NTYPE[type];
+  while (names.includes(name.toLowerCase())) name = `${NTYPE[type]} ${++n}`;
+  $("#nd-rows").insertAdjacentHTML("beforeend", nrowHTML({type, name, enabled: true, verify: true, format: "generic", security: "starttls", port: 587}));
+  const row = $("#nd-rows").lastElementChild; row.scrollIntoView({block: "nearest"}); row.querySelector(type === "webhook" ? ".f-url" : ".f-host").focus();
+};
+$("#n-cfg").onclick = async () => {
+  try { await fetchNotify(); renderDest(); } catch (x) { note("#ndmsg", x.message); return; }
+  $("#nd-rows").innerHTML = NT.destinations.map(nrowHTML).join(""); note("#nd-err", ""); $("#nd").showModal();
+};
+$("#nd-addw").onclick = () => nAdd("webhook");
+$("#nd-adde").onclick = () => nAdd("email");
+$("#nd-rows").onchange = e => { if (e.target.classList.contains("f-sec")) { const port = e.target.closest(".ds").querySelector(".f-port"); if (Object.values(PORTS).includes(+port.value)) port.value = PORTS[e.target.value]; } };  // a standard port follows the security choice
+$("#nd-rows").onclick = async e => {
+  const row = e.target.closest(".ds"), c = e.target.classList;
+  if (!row) return;
+  if (c.contains("f-del")) row.remove();
+  if (c.contains("f-test")) {
+    const res = row.querySelector(".f-res"), b = e.target; b.disabled = true; res.className = "f-res mute"; res.textContent = "Sending…";
+    try {
+      const r = await api("POST", "/api/notify/test", nData(row));
+      res.className = "f-res" + (r.ok ? "" : " bad"); res.textContent = r.ok ? "Sent. Check that it arrived." : r.error;
+    } catch (x) { res.className = "f-res bad"; res.textContent = x.message; }
+    b.disabled = false;
+  }
+};
+$("#nd-x").onclick = () => $("#nd").close();
+$("#nd-save").onclick = async () => {
+  try {
+    NT = await api("PUT", "/api/notify", {destinations: [...document.querySelectorAll("#nd-rows .ds")].map(nData)});
+    $("#nd").close(); renderDest(); note("#ndmsg", "Saved.");
+  } catch (x) { note("#nd-err", x.message); }
 };
 
 const bytes = n => n < 1024 ? n + " B" : n < 1048576 ? (n / 1024).toFixed(0) + " KB" : n < 1073741824 ? (n / 1048576).toFixed(1) + " MB" : (n / 1073741824).toFixed(2) + " GB";
