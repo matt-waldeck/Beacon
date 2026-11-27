@@ -4,7 +4,7 @@ WORKDIR /app
 # ping needs a raw-socket permission (set on the program itself, so Beacon can run without root); gosu drops root at start-up
 RUN apt-get update && apt-get install -y --no-install-recommends iputils-ping libcap2-bin gosu && rm -rf /var/lib/apt/lists/* \
     && (setcap cap_net_raw+ep "$(readlink -f "$(command -v ping)")" || echo "Could not set the ping permission; ping will use unprivileged ICMP sockets instead") \
-    && useradd --system --uid 10001 --no-create-home --shell /usr/sbin/nologin beacon
+    && useradd --system --uid 10001 --shell /usr/sbin/nologin beacon
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 # Chart.js is bundled at build time so the dashboard works with no internet. The download must match this checksum (the same one the page checks if it ever has to load Chart.js from the CDN);
