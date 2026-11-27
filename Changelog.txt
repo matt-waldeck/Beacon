@@ -1,3 +1,7 @@
+v1.0.1 (2026-11-27)
+-Fixed version label in Compose file.
+-Removed unneeded flag during account creation in Dockerfile.
+
 v1.0.0
 Release (2026-11-24)
     -Combined tiles on Network and Server pages into an overview.

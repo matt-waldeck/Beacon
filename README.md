@@ -35,12 +35,16 @@ Your data lives in `./data`. Back that folder up. History is kept for 7 days by 
 
 ## Notifications
 
-Settings > Notifications sends a message when something stops answering and another when it answers again. Tick what you want to hear about (network devices, servers and VMs, UniFi controllers) and where it should go:
+Settings > Notifications sends a message when something stops answering and another when it answers again. Tick what you want to hear about (network devices, servers and VMs, UniFi controllers), then choose **Configure…** to add as many destinations as you like, each set up on its own:
 
-- **Webhook:** a generic JSON message, or one shaped for Discord, Slack or ntfy. Use **Send a test** to check the address.
+- **Webhook:** a generic JSON message, or one shaped for Discord, Slack or ntfy.
 - **Email:** through your own mail server (host, port, STARTTLS, SSL/TLS or none, an optional login). Beacon doesn't deliver mail itself, it hands it to a server such as your ISP's, a mail service or one on your network.
 
-A message goes out after a device has failed a few checks in a row (3 by default, 1 to 20), so one missed check stays quiet, and the recovery message says how long it was down. If a UniFi controller is unreachable you get one message about the controller, not one for each of its devices. The webhook address and mail password are kept on the server and never sent back to the page; if a message can't be sent, the page says why next to the destination.
+**Test** on each destination sends one message using what is filled in, saved or not. Every message goes to every destination that is switched on.
+
+A message goes out after a device has failed a few checks in a row (3 by default, 1 to 20), so one missed check stays quiet, and the recovery message says how long it was down. If a UniFi controller is unreachable you get one message about the controller, not one for each of its devices. **Combine many messages into one** is off by default: switch it on and choose a number, and when at least that many messages arrive together (within 15 seconds of each other) they are sent as a single message listing everything, which keeps a network outage from sending dozens. With it on, every message waits up to 15 seconds so that others can join it; fewer than the number go out separately after that wait.
+
+Webhook addresses and mail passwords are kept on the server and never sent back to the page. If a message can't be sent, the page says why on that destination's card.
 
 ## UniFi API
 
