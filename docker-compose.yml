@@ -1,7 +1,7 @@
 services:
   beacon:
     build: .
-    image: beacon:1.0.0-rc2
+    image: beacon:1.0.0
     container_name: beacon
     restart: unless-stopped
     cap_add: [NET_RAW]  # lets the container send pings
