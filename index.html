@@ -241,7 +241,7 @@ textarea{font:inherit;padding:.5rem .65rem;border:1px solid var(--rule);border-r
 <span class="uw"><button id="who" class="chip" hidden aria-haspopup="menu" aria-expanded="false"><i class="av"></i><span id="wn"></span></button>
 <div id="um" class="menu sm" role="menu" hidden><p class="mute" style="margin:0">Signed in as <b id="umn"></b><br><span id="umr"></span></p><button id="umo" role="menuitem">Sign out</button></div></span></div></header>
 <dialog id="sd">
-<div id="sn"><button data-s="look">Appearance</button><button data-s="mon" data-r="3">Monitoring</button><button data-s="unifi" data-r="3">UniFi</button><button data-s="sec" data-r="3">Security</button><button data-s="brand" data-r="3">Branding</button><button data-s="users" data-r="3">Users</button><button data-s="account" data-r="acct">Account</button><button data-s="fb" data-r="ng">Feedback</button><button data-s="about">About</button></div>
+<div id="sn"><button data-s="look">Appearance</button><button data-s="mon" data-r="3">Monitoring</button><button data-s="unifi" data-r="3">UniFi</button><button data-s="notify" data-r="3">Notifications</button><button data-s="sec" data-r="3">Security</button><button data-s="brand" data-r="3">Branding</button><button data-s="users" data-r="3">Users</button><button data-s="account" data-r="acct">Account</button><button data-s="fb" data-r="ng">Feedback</button><button data-s="about">About</button></div>
 <div class="sbody"><button id="sx" class="close" aria-label="Close">✕</button>
 <section data-s="look"><h3>Appearance</h3>
 <label>Style <select id="style"><option value="honeycrisp">Honeycrisp</option><option value="pastel">Pastel</option><option value="stark">Stark</option></select></label>
@@ -260,6 +260,33 @@ textarea{font:inherit;padding:.5rem .65rem;border:1px solid var(--rule);border-r
 <section data-s="unifi" class="uni" hidden><h3>UniFi</h3>
 <div><h4 style="margin:0 0 .6rem;font-size:.95rem">Sites</h4><div id="u-list" style="display:grid;gap:.7rem"></div><p id="u-disc" class="mute" style="margin:.8rem 0 0"></p><span id="umsg" class="mute"></span></div>
 <div id="u-foot"><button id="u-cfg">Configure…</button><button id="u-check" disabled>Check for new devices now</button></div></section>
+<section data-s="notify" hidden><h3>Notifications</h3>
+<p class="mute" style="margin:0">Beacon sends a message when something stops answering, and another when it answers again. Choose what to hear about and where it goes.</p>
+<div class="us"><b>Send a message when</b>
+<label class="chk"><input type="checkbox" id="n-device"> A network device goes offline or comes back</label>
+<label class="chk"><input type="checkbox" id="n-server"> A server or VM stops answering ping or comes back</label>
+<label class="chk"><input type="checkbox" id="n-unifi"> A UniFi controller can't be reached or comes back</label>
+<label>Report after <span><input id="n-after" type="number" min="1" max="20"> failed checks in a row</span></label>
+<p class="mute" style="margin:0">A higher number avoids messages about a single missed check. Network devices are checked and servers pinged on the intervals set under Monitoring.</p></div>
+<div class="us"><div class="uh"><label class="chk"><input type="checkbox" id="w-on"> <b>Webhook</b></label></div>
+<label>Address <input id="w-url" type="url" autocomplete="off" placeholder="https://…"></label>
+<label>Format <select id="w-fmt"><option value="generic">Generic JSON</option><option value="discord">Discord</option><option value="slack">Slack</option><option value="ntfy">ntfy</option></select></label>
+<label class="chk"><input type="checkbox" id="w-tls"> Check the certificate</label>
+<div class="dr"><span id="w-res" class="f-res mute"></span><button type="button" id="w-test">Send a test</button></div>
+<div id="w-st" class="mute"></div></div>
+<div class="us"><div class="uh"><label class="chk"><input type="checkbox" id="e-on"> <b>Email</b></label></div>
+<label>Mail server <input id="e-host" autocomplete="off" placeholder="smtp.example.com"></label>
+<label>Security <select id="e-sec"><option value="starttls">STARTTLS (usually port 587)</option><option value="ssl">SSL/TLS (usually port 465)</option><option value="none">None (usually port 25)</option></select></label>
+<label>Port <input id="e-port" type="number" min="1" max="65535"></label>
+<label>User name <input id="e-user" autocomplete="off" placeholder="Optional"></label>
+<label>Password <input id="e-pw" type="password" autocomplete="new-password"></label>
+<label>From <input id="e-from" autocomplete="off" placeholder="beacon@example.com"></label>
+<label>To <input id="e-to" autocomplete="off" placeholder="you@example.com, other@example.com"></label>
+<label class="chk"><input type="checkbox" id="e-tls"> Check the certificate</label>
+<div class="dr"><span id="e-res" class="f-res mute"></span><button type="button" id="e-test">Send a test</button></div>
+<div id="e-st" class="mute"></div></div>
+<div class="row"><span id="nmsg" class="mute"></span><button id="nsave" class="pri">Save</button></div>
+<p class="mute" style="margin:0">The webhook address and mail password are kept on the server and never sent back to this page. A test uses what is filled in above, saved or not.</p></section>
 <section data-s="sec" hidden><h3>Security</h3>
 <div class="row"><label>Sign out after <input id="idle" type="number" min="0" max="1440"> minutes of inactivity</label><button id="isave" class="pri">Save</button></div>
 <span id="imsg" class="mute"></span>
@@ -1079,12 +1106,13 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") $("#um").hid
 $("#so").onclick = signOut;
 
 // settings dialog
-const clearNotes = () => ["mmsg", "umsg", "ud-err", "imsg", "amsg", "hkmsg", "kerr", "bmsg", "perr", "uerr", "fb-msg", "st-msg"].forEach(i => note("#" + i, ""));
+const clearNotes = () => ["mmsg", "umsg", "ud-err", "imsg", "amsg", "hkmsg", "kerr", "bmsg", "nmsg", "w-res", "e-res", "perr", "uerr", "fb-msg", "st-msg"].forEach(i => note("#" + i, ""));
 function showSec(s) {
   clearNotes();
   $("#sd").querySelectorAll("[data-s]").forEach(e => e.tagName === "SECTION" ? e.hidden = e.dataset.s !== s : e.setAttribute("aria-current", e.dataset.s === s));
   uStop();
   if (s === "unifi") { loadUnifi(); uTimer = setInterval(loadUnifi, 10000); }
+  if (s === "notify") loadNotify();
   if (s === "users") loadUsers();
   if (s === "fb") fbInit();
   if (s === "about" && can(3)) loadStorage();
@@ -1192,6 +1220,46 @@ $("#ud-save").onclick = async () => {
     $("#ud").close(); note("#umsg", "Saved."); loadUnifi(); refresh();
   } catch (x) { note("#ud-err", x.message); }
 };
+
+// Notifications: what is sent and where. The webhook address and the mail password stay on the server; blank boxes keep what is saved.
+const NK = ["device", "server", "unifi"], PORTS = {starttls: 587, ssl: 465, none: 25};
+const wFields = () => ({url: $("#w-url").value.trim(), format: $("#w-fmt").value, verify: $("#w-tls").checked});
+const eFields = () => ({host: $("#e-host").value.trim(), port: $("#e-port").value, security: $("#e-sec").value, user: $("#e-user").value.trim(), password: $("#e-pw").value, sender: $("#e-from").value.trim(), to: $("#e-to").value, verify: $("#e-tls").checked});
+function fillNotify(r) {
+  UNI.skew = r.now - Date.now() / 1000;
+  NK.forEach(k => { $("#n-" + k).checked = r.events[k]; });
+  $("#n-after").value = r.after;
+  const w = r.webhook, e = r.email, last = (x, el) => { el.className = x && !x.ok ? "bad" : "mute"; el.textContent = !x ? "" : x.ok ? `Last message sent ${agoT(x.ts).toLowerCase()}.` : `Last message failed ${agoT(x.ts).toLowerCase()}: ${x.error}`; };
+  $("#w-on").checked = w.enabled; $("#w-fmt").value = w.format; $("#w-tls").checked = w.verify;
+  $("#w-url").value = ""; $("#w-url").placeholder = w.set ? `Saved (${w.hint}). Leave blank to keep it` : "https://…";
+  $("#e-on").checked = e.enabled; $("#e-host").value = e.host; $("#e-sec").value = e.security; $("#e-port").value = e.port; $("#e-user").value = e.user;
+  $("#e-pw").value = ""; $("#e-pw").placeholder = e.password ? "Saved. Leave blank to keep it" : ""; $("#e-from").value = e.sender; $("#e-to").value = e.to; $("#e-tls").checked = e.verify;
+  last(r.last.webhook, $("#w-st")); last(r.last.email, $("#e-st"));
+}
+async function loadNotify() {
+  try { fillNotify(await api("GET", "/api/notify")); }
+  catch (x) { note("#nmsg", x.message); }
+}
+$("#e-sec").onchange = () => { if (Object.values(PORTS).includes(+$("#e-port").value)) $("#e-port").value = PORTS[$("#e-sec").value]; };  // a standard port follows the security choice
+$("#nsave").onclick = async () => {
+  const b = $("#nsave"); b.disabled = true;
+  try {
+    fillNotify(await api("PUT", "/api/notify", {events: Object.fromEntries(NK.map(k => [k, $("#n-" + k).checked])), after: $("#n-after").value,
+      webhook: {enabled: $("#w-on").checked, ...wFields()}, email: {enabled: $("#e-on").checked, ...eFields()}}));
+    note("#nmsg", "Saved.");
+  } catch (x) { note("#nmsg", x.message); }
+  b.disabled = false;
+};
+const nTest = (which, fields, res, btn) => async () => {
+  btn.disabled = true; res.className = "f-res mute"; res.textContent = "Sending…";
+  try {
+    const r = await api("POST", "/api/notify/test", {which, ...fields()});
+    res.className = "f-res" + (r.ok ? "" : " bad"); res.textContent = r.ok ? "Sent. Check that it arrived." : r.error;
+  } catch (x) { res.className = "f-res bad"; res.textContent = x.message; }
+  btn.disabled = false;
+};
+$("#w-test").onclick = nTest("webhook", wFields, $("#w-res"), $("#w-test"));
+$("#e-test").onclick = nTest("email", eFields, $("#e-res"), $("#e-test"));
 
 const bytes = n => n < 1024 ? n + " B" : n < 1048576 ? (n / 1024).toFixed(0) + " KB" : n < 1073741824 ? (n / 1048576).toFixed(1) + " MB" : (n / 1073741824).toFixed(2) + " GB";
 async function loadStorage() {

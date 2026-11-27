@@ -33,6 +33,15 @@ Your data lives in `./data`. Back that folder up. History is kept for 7 days by 
 | `GITHUB_REPO` | Where Settings > Feedback opens issues |
 | `SELFHST_ICONS_SOURCE`, `DASHBOARD_ICONS_SOURCE` | Icon collections, for your own mirrors |
 
+## Notifications
+
+Settings > Notifications sends a message when something stops answering and another when it answers again. Tick what you want to hear about (network devices, servers and VMs, UniFi controllers) and where it should go:
+
+- **Webhook:** a generic JSON message, or one shaped for Discord, Slack or ntfy. Use **Send a test** to check the address.
+- **Email:** through your own mail server (host, port, STARTTLS, SSL/TLS or none, an optional login). Beacon doesn't deliver mail itself, it hands it to a server such as your ISP's, a mail service or one on your network.
+
+A message goes out after a device has failed a few checks in a row (3 by default, 1 to 20), so one missed check stays quiet, and the recovery message says how long it was down. If a UniFi controller is unreachable you get one message about the controller, not one for each of its devices. The webhook address and mail password are kept on the server and never sent back to the page; if a message can't be sent, the page says why next to the destination.
+
 ## UniFi API
 
 Open Settings > UniFi, choose **Configure…** and add each UniFi Network application: a name, its address (for example `https://192.168.1.10:8443`), an API key (create one in the application under Settings > Control Plane > Integrations), and the site if it isn't `default`. **Test** tries the settings without saving. Beacon then asks each controller for every device's CPU, memory, load, uptime, throughput and wireless client count, instead of opening an SSH session to every device. It uses the official Network API, so you need a recent Network application. The page lists every site with a glowing status light, the controller type and version, when Beacon last heard from it, and how many devices it has.
@@ -53,7 +62,7 @@ Open Settings > UniFi, choose **Configure…** and add each UniFi Network applic
 - SSH host keys are pinned on first use: the first time Beacon connects to a device it remembers that device's key (in `./data/known_hosts`), and after that it refuses to connect if the key changes, so the shared password is never sent to an impostor. The first connection is trusted, so add devices on a network you trust. If you reset or replace a device, use Settings > Security > Forget SSH host keys to choose which devices to trust again.
 - The container starts as root only to make `./data` writable, then runs Beacon as an unprivileged user (ID 10001).
 - Changing a password has the same limit on wrong guesses, counted per person.
-- The shared SSH password and the UniFi API key never leave the server. The sites' API keys are kept in `./data/unifi.json`: readable only by Beacon, but not encrypted.
+- The shared SSH password, the UniFi API keys, the webhook address and the mail password never leave the server. The sites' API keys are kept in `./data/unifi.json` and the notification settings in `./data/notify.json`: readable only by Beacon, but not encrypted.
 
 ## Updating
 
@@ -61,7 +70,7 @@ Replace the files (including the new `entrypoint.sh`) and run `docker compose up
 
 ## Tests
 
-`tests/` has the checks used before each release. `python3 tests/storage_test.py`, `tests/setup_test.py`, `tests/hostkey_test.py` and `tests/unifi_test.py` (a fake controller on localhost) need only Flask and runs against a throwaway database with no real devices. `tests/ui_smoke.py` and `tests/ui_storage.py` drive a real browser through a simulated Beacon and need Playwright with Chromium (`pip install playwright && playwright install chromium`).
+`tests/` has the checks used before each release. `python3 tests/storage_test.py`, `tests/setup_test.py`, `tests/hostkey_test.py`, `tests/unifi_test.py` (a fake controller on localhost) and `tests/notify_test.py` (a fake webhook receiver and mail server on localhost) need only Flask and runs against a throwaway database with no real devices. `tests/ui_smoke.py`, `tests/ui_storage.py` and `tests/ui_notify.py` drive a real browser through a simulated Beacon and need Playwright with Chromium (`pip install playwright && playwright install chromium`).
 
 ## Icons
 

@@ -1,6 +1,8 @@
-import base64, functools, hashlib, json, os, queue, re, secrets, shutil, socket, sqlite3, ssl, subprocess, threading, time, urllib.error, urllib.parse, urllib.request
+import base64, functools, hashlib, json, os, queue, re, secrets, shutil, smtplib, socket, sqlite3, ssl, subprocess, threading, time, urllib.error, urllib.parse, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
+from email.message import EmailMessage
+from email.utils import formatdate, make_msgid
 import paramiko
 from flask import Flask, g, jsonify, request, send_file, send_from_directory, session
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -132,9 +134,11 @@ def migrate():
         sql("PRAGMA user_version = 1")
 
 
-def save_sample(name, r):
+def save_sample(name, r, notify=True):  # notify=False: the controller is to blame, and it gets its own message
     sql("INSERT INTO samples (dev, ts, data, " + ", ".join("m_" + k for k in METRICS) + ") VALUES (?,?,?," + ",".join("?" * len(METRICS)) + ")",
         (name, r["ts"], json.dumps(r), *(r.get(k) for k in METRICS)))
+    if notify:
+        watch("device", name, "error" not in r, r.get("error", ""))
 
 
 def retention():  # days of history to keep: Settings first, then config.json, then 7
@@ -438,12 +442,14 @@ def poll_unifi(devs, ex):  # saves a sample for every device a site knows about 
         except (UnifiError, KeyError, TypeError, AttributeError) as e:
             msg = str(e) if isinstance(e, UnifiError) else "Unexpected reply from the controller."
             UF["state"][c["id"]] = {**UF["state"].get(c["id"], {}), "ok": False, "error": msg, "ts": time.time()}
+            watch("unifi", c["name"], False, msg)
             for d in rest:  # during an outage the devices it answered for last time show the problem; the others carry on over SSH
                 if API_NAMES.get(d["name"]) == c["id"]:
                     names[d["name"]] = c["id"]
-                    save_sample(d["name"], {"ts": time.time(), "error": f"UniFi API ({c['name']}): {msg}"})
+                    save_sample(d["name"], {"ts": time.time(), "error": f"UniFi API ({c['name']}): {msg}"}, notify=False)
             rest = [d for d in rest if d["name"] not in names]
             continue
+        watch("unifi", c["name"], True)
         got.update(part)
         names.update({n: c["id"] for n in part})
         rest = [d for d in rest if d["name"] not in part]
@@ -452,6 +458,7 @@ def poll_unifi(devs, ex):  # saves a sample for every device a site knows about 
     for k in [k for k in UF["state"] if k not in {c["id"] for c in unifi_sites()}]:  # a removed site is forgotten
         UF["state"].pop(k, None)
         UF["conn"].pop(k, None)
+    notify_prune("unifi", {c["name"] for c in unifi_sites()})
 
     def one(name):
         x, st, n = got[name]
@@ -574,6 +581,7 @@ def loop():
                     devs = poll_unifi(devs, ex)
                 list(ex.map(poll, devs))
             prune()
+            notify_prune("device", {d["name"] for d in devices()})
         except Exception as e:
             print("poll error:", e, flush=True)
         wake.wait(max(1, interval() - (time.time() - t0)))
@@ -741,7 +749,7 @@ def who():
     return None
 
 
-ADMIN_GET = ("/api/users", "/api/storage", "/api/hostkeys", "/api/security", "/api/unifi")  # reading these needs an admin
+ADMIN_GET = ("/api/users", "/api/storage", "/api/hostkeys", "/api/security", "/api/unifi", "/api/notify")  # reading these needs an admin
 PASSIVE = {"/api/data", "/api/servers"}  # background polling: does not count as someone using the page
 OPEN = {("GET", "/vendor/chart.umd.min.js"), ("GET", "/"), ("GET", "/healthz"), ("GET", "/api/me"), ("GET", "/api/brand"), ("POST", "/api/login"), ("POST", "/api/setup")}
 
@@ -881,6 +889,244 @@ def unifi_forget():  # devices removed by hand can be found again
     j = unifi_raw()
     j["ignored"] = []
     write_private(UNIF, j)
+    return jsonify(ok=True)
+
+
+# ---- Notifications: a message to a webhook and/or an email (through your own mail server) when something stops answering and when it comes back.
+# Set up in Settings > Notifications (notify.json, 0600: the webhook address and mail password never leave the server).
+NOTIFY = os.path.join(DATA, "notify.json")
+NEVENTS = ("device", "server", "unifi")  # network devices, servers and VMs, UniFi controllers
+NFORMATS = ("generic", "discord", "slack", "ntfy")
+NW = {}  # (kind, name) -> {"fails": checks failed in a row, "first": when the run began, "sent": whether it was reported}
+NQ = queue.Queue()  # messages waiting to go out, so a slow mail server never holds up the checks
+NLAST = {}  # per destination: how the last message went
+nlock = threading.Lock()
+ADDR = re.compile(r"[^@\s,;<>]+@[^@\s,;<>]+")
+
+
+def notify_saved():  # the saved settings, tidied so a hand-edited file can't break anything
+    j = read_json(NOTIFY, {})
+    j = j if isinstance(j, dict) else {}
+    w, m, ev = (j.get(k) if isinstance(j.get(k), dict) else {} for k in ("webhook", "email", "events"))
+    return {"events": {k: ev.get(k, True) is not False for k in NEVENTS}, "after": whole(j.get("after", 3), 3, 1, 20),
+            "webhook": {"enabled": w.get("enabled") is True, "url": str(w.get("url") or ""), "format": w.get("format") if w.get("format") in NFORMATS else "generic", "verify": w.get("verify") is not False},
+            "email": {"enabled": m.get("enabled") is True, "host": str(m.get("host") or ""), "port": whole(m.get("port", 587), 587, 1, 65535), "security": m.get("security") if m.get("security") in ("none", "starttls", "ssl") else "starttls",
+                      "user": str(m.get("user") or ""), "password": str(m.get("password") or ""), "verify": m.get("verify") is not False, "sender": str(m.get("sender") or ""), "to": str(m.get("to") or "")}}
+
+
+def span(s):  # "5 min", "2 h", "3 days"
+    return f"{int(s)} s" if s < 90 else f"{round(s / 60)} min" if s < 5400 else f"{round(s / 3600)} h" if s < 129600 else f"{round(s / 86400)} days"
+
+
+def notify_msg(kind, name, state, since, fails, why, now):
+    noun, host = {"device": "Device", "server": "Server", "unifi": "UniFi controller"}[kind], ""
+    if kind != "unifi":
+        e = next((x for x in items("devices" if kind == "device" else "servers") if x.get("name") == name), {})
+        host, noun = str(e.get("host", "")), "VM" if e.get("type") == "vm" else noun
+    one = lambda t: re.sub(r"\s+", " ", str(t)).strip()  # one line, so a name can't break a header
+    name, host, why = one(name), one(host), one(why)
+    who, when = f"{name} ({host})" if host else name, time.strftime("%Y-%m-%d %H:%M %Z", time.localtime(since))
+    if state == "down":
+        title = f"{name} is " + ("unreachable" if kind == "unifi" else "offline")
+        text = f"{noun} {who} has failed {fails} check{'' if fails == 1 else 's'} in a row, since {when}." + (f" {why}" if why else "")
+    else:
+        title = f"{name} is " + ("reachable again" if kind == "unifi" else "back online")
+        text, why = f"{noun} {who} is answering again after {span(now - since)} (down since {when}).", ""
+    return {"event": f"{kind}_{state}", "state": state, "kind": kind, "name": name, "host": host, "reason": why, "since": since, "ts": now, "title": f"{brand()['name']}: {title}", "text": text}
+
+
+def watch(kind, name, ok, why=""):  # every check's result comes through here: after `after` failures in a row it is reported, and again when it answers
+    try:
+        now = time.time()
+        with nlock:
+            w = NW.setdefault((kind, name), {"fails": 0, "first": None, "sent": False})
+            if ok:
+                first, sent, w["fails"], w["first"], w["sent"] = w["first"], w["sent"], 0, None, False
+                if not sent:
+                    return
+                state, fails = "up", 0
+            else:
+                w["fails"] += 1
+                w["first"] = w["first"] or now
+                if w["sent"] or w["fails"] < notify_saved()["after"]:
+                    return
+                w["sent"], first, state, fails = True, w["first"], "down", w["fails"]
+        NQ.put(notify_msg(kind, name, state, first, fails, why, now))
+    except Exception as e:
+        print("notification error:", e, flush=True)
+
+
+def notify_prune(kind, keep):  # a removed device, server or site is forgotten
+    with nlock:
+        for k in [k for k in NW if k[0] == kind and k[1] not in keep]:
+            del NW[k]
+
+
+def mime_header(t):  # ntfy reads non-ASCII header text in this form
+    return t if t.isascii() else "=?UTF-8?B?" + base64.b64encode(t.encode()).decode() + "?="
+
+
+def tls_context(verify):
+    ctx = ssl.create_default_context()
+    if not verify:
+        ctx.check_hostname, ctx.verify_mode = False, ssl.CERT_NONE
+    return ctx
+
+
+def post_webhook(w, m):
+    h, f, down = {"User-Agent": f"Beacon/{VERSION}"}, w["format"], m["state"] == "down"
+    if f == "ntfy":  # plain text, with the title and a priority in headers
+        body = m["text"].encode()
+        h.update({"Content-Type": "text/plain; charset=utf-8", "Title": mime_header(m["title"]), "Priority": "high" if down else "default", "Tags": "rotating_light" if down else "white_check_mark"})
+    else:
+        obj = {"discord": {"content": f"**{m['title']}**\n{m['text']}"}, "slack": {"text": f"*{m['title']}*\n{m['text']}"}}.get(f) or {
+            "source": "beacon", "version": VERSION, "event": m["event"], "state": m["state"], "kind": m["kind"], "name": m["name"], "host": m["host"], "reason": m["reason"], "since": m["since"], "time": m["ts"], "title": m["title"], "message": m["text"]}
+        body, h["Content-Type"] = json.dumps(obj).encode(), "application/json"
+    with urllib.request.urlopen(urllib.request.Request(w["url"], data=body, headers=h, method="POST"), timeout=10, context=tls_context(w["verify"])) as r:
+        r.read(1000)
+
+
+def send_mail(c, m):
+    msg = EmailMessage()
+    msg["Subject"], msg["From"], msg["To"], msg["Date"], msg["Message-ID"] = m["title"], c["sender"], c["to"], formatdate(localtime=True), make_msgid()
+    msg.set_content(m["text"] + f"\n\nSent by {brand()['name']}.")
+    ctx = tls_context(c["verify"])
+    with (smtplib.SMTP_SSL(c["host"], c["port"], timeout=15, context=ctx) if c["security"] == "ssl" else smtplib.SMTP(c["host"], c["port"], timeout=15)) as s:
+        if c["security"] == "starttls":
+            s.starttls(context=ctx)
+        if c["user"]:
+            s.login(c["user"], c["password"])
+        s.send_message(msg)
+
+
+def notify_error(e):  # a short reason a message didn't go out; never the webhook address or the password
+    if isinstance(e, urllib.error.HTTPError):
+        return f"The webhook answered with an error ({e.code} {e.reason})."
+    if isinstance(e, urllib.error.URLError) and isinstance(e.reason, Exception):
+        e = e.reason
+    if isinstance(e, smtplib.SMTPAuthenticationError):
+        return "The mail server refused the user name or password."
+    if isinstance(e, smtplib.SMTPRecipientsRefused):
+        return "The mail server refused the To address."
+    if isinstance(e, smtplib.SMTPSenderRefused):
+        return "The mail server refused the From address."
+    if isinstance(e, ssl.SSLError):
+        return f"The secure connection failed ({str(getattr(e, 'reason', None) or e)[:80]}). Check the Security setting and port, or untick Check the certificate."
+    if isinstance(e, smtplib.SMTPException):
+        return "The mail server said: " + str(e)[:150]
+    if isinstance(e, TimeoutError):
+        return "It took too long to answer."
+    if isinstance(e, OSError):
+        return "Couldn't connect: " + str(e.strerror or e)[:100]
+    return "Unexpected error: " + type(e).__name__
+
+
+def notify_worker():
+    while True:
+        m = NQ.get()
+        try:
+            c = notify_saved()
+            if not c["events"].get(m["kind"]):
+                continue
+            for which, send in (("webhook", post_webhook), ("email", send_mail)):
+                if c[which]["enabled"]:
+                    try:
+                        send(c[which], m)
+                        NLAST[which] = {"ts": time.time(), "ok": True, "error": ""}
+                    except Exception as e:
+                        NLAST[which] = {"ts": time.time(), "ok": False, "error": notify_error(e)}
+                        print(f"notification to the {which} failed: {NLAST[which]['error']}", flush=True)
+        except Exception as e:
+            print("notification error:", e, flush=True)
+
+
+def notify_dest(which, j, cur, test=False):  # one destination as the page sends it, checked; a blank secret keeps the saved one -> (settings, error)
+    j = j if isinstance(j, dict) else {}
+    on = j["enabled"] is True if "enabled" in j else cur["enabled"]
+    need = test or on
+    ver = j["verify"] is True if "verify" in j else cur["verify"]
+    if which == "webhook":
+        url = str(j.get("url") or "").strip() or cur["url"]
+        try:
+            p = urllib.parse.urlsplit(url)
+            good = p.scheme in ("http", "https") and bool(p.hostname) and len(url) <= 500
+        except ValueError:
+            good = False
+        if (url and not good) or (need and not url):
+            return None, "Enter the webhook address, starting with http:// or https://."
+        return {"enabled": on, "url": url, "format": j.get("format") if j.get("format") in NFORMATS else cur["format"], "verify": ver}, None
+    host, sec = str(j.get("host", cur["host"])).strip(), j.get("security") if j.get("security") in ("none", "starttls", "ssl") else cur["security"]
+    try:
+        port = int(j.get("port", cur["port"]))
+    except (TypeError, ValueError):
+        port = 0
+    user = str(j.get("user", cur["user"])).strip()[:200]
+    pw = (str(j.get("password") or "") or cur["password"])[:200] if user else ""
+    sender, to = str(j.get("sender", cur["sender"])).strip(), [x for x in re.split(r"[,;\s]+", str(j.get("to", cur["to"]))) if x]
+    if host and not HOST.match(host):
+        return None, "That doesn't look like a mail server name or address."
+    if not 1 <= port <= 65535:
+        return None, "Enter a port from 1 to 65535."
+    if sender and not ADDR.fullmatch(sender):
+        return None, "Enter the From address as name@example.com."
+    if len(to) > 10 or not all(ADDR.fullmatch(x) for x in to):
+        return None, "Check the To addresses: up to 10, separated by commas."
+    if need and not (host and sender and to):
+        return None, "Fill in the server, the From address and at least one To address."
+    if need and user and not pw:
+        return None, "Enter the password for that user name."
+    return {"enabled": on, "host": host, "port": port, "security": sec, "user": user, "password": pw, "verify": ver, "sender": sender, "to": ", ".join(to)}, None
+
+
+@app.get("/api/notify")
+def notify_info():  # admin: what is sent and where. The webhook address and the mail password are never sent back.
+    c = notify_saved()
+    w, m = c["webhook"], c["email"]
+    try:
+        hint = urllib.parse.urlsplit(w["url"]).hostname or ""
+    except ValueError:
+        hint = ""
+    return jsonify(events=c["events"], after=c["after"], now=time.time(), last=NLAST,
+                   webhook={"enabled": w["enabled"], "format": w["format"], "verify": w["verify"], "set": bool(w["url"]), "hint": hint},
+                   email={**{k: m[k] for k in ("enabled", "host", "port", "security", "user", "verify", "sender", "to")}, "password": bool(m["password"])})
+
+
+@app.put("/api/notify")
+@locked
+def set_notify():
+    j, cur = request.get_json(silent=True) or {}, notify_saved()
+    ev = j.get("events") if isinstance(j.get("events"), dict) else {}
+    new = {"events": {k: ev[k] is True if k in ev else cur["events"][k] for k in NEVENTS}, "after": cur["after"]}
+    if "after" in j:
+        try:
+            new["after"] = int(j["after"])
+        except (TypeError, ValueError):
+            new["after"] = 0
+        if not 1 <= new["after"] <= 20:
+            return bad("Wait for 1 to 20 failed checks before sending.")
+    for which in ("webhook", "email"):
+        new[which], err = notify_dest(which, j[which], cur[which]) if which in j else (cur[which], None)
+        if err:
+            return bad(err)
+    write_private(NOTIFY, new)
+    return notify_info()
+
+
+@app.post("/api/notify/test")
+def test_notify():  # sends one message using the settings on the page, saving nothing
+    j, cur = request.get_json(silent=True) or {}, notify_saved()
+    which = j.get("which")
+    if which not in ("webhook", "email"):
+        return bad("Unknown destination.")
+    d, err = notify_dest(which, j, cur[which], test=True)
+    if err:
+        return jsonify(ok=False, error=err)
+    m = {"event": "test", "state": "test", "kind": "test", "name": brand()["name"], "host": "", "reason": "", "since": None, "ts": time.time(),
+         "title": f"{brand()['name']}: test message", "text": "If you can read this, notifications from Beacon will reach you here."}
+    try:
+        (post_webhook if which == "webhook" else send_mail)(d, m)
+    except Exception as e:
+        return jsonify(ok=False, error=notify_error(e))
     return jsonify(ok=True)
 
 
@@ -1216,6 +1462,8 @@ def sloop():
                 res = list(ex.map(lambda s: (s["name"], ping(s["host"])), items("servers")))
             for n, ms in res:
                 sql("INSERT INTO pings VALUES (?,?,?)", (n, t0, ms))
+                watch("server", n, ms is not None, "It doesn't answer ping.")
+            notify_prune("server", {n for n, _ in res})
         except Exception as e:
             print("ping error:", e, flush=True)
         swake.wait(max(1, conf()["server_interval"] - (time.time() - t0)))
@@ -1505,3 +1753,4 @@ for _a in (read_json(os.path.join(DATA, "dash.json"), {}).get("apps", {}) if isi
         queue_icon(_a.get("name", ""))
 threading.Thread(target=sloop, daemon=True).start()
 threading.Thread(target=dloop, daemon=True).start()
+threading.Thread(target=notify_worker, daemon=True).start()
